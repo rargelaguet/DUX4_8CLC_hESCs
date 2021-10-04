@@ -1,0 +1,1 @@
+A message for future Ricard: Once you get the E8.0 data make sure to use # as a seprator between sample and cell to agree with archr and make your life easier

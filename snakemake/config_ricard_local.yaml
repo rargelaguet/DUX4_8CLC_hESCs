@@ -1,0 +1,53 @@
+samples:
+  - AGTCAA_R7_L001_mm10_sorted_merged_rmdup_mtx2
+  - AGTTCC_R8_L001_mm10_sorted_merged_rmdup_mtx2
+  - CTTGTA_R6_L001_mm10_sorted_merged_rmdup_mtx2
+
+
+#################
+## Directories ##
+#################
+
+directories:
+    base: /Users/argelagr/data/gastrulation_histones
+    original_data: /Users/argelagr/data/gastrulation_histones/original/rna
+    processed_data: /Users/argelagr/data/gastrulation_histones/processed/rna
+    results: /Users/argelagr/data/gastrulation_histones/results
+    atlas: /Users/argelagr/data/gastrulation10x
+
+#############
+## Scripts ##
+#############
+
+scripts:
+    create_seurat: ../rna/processing/1_create_seurat_rna.R
+    qc: ../rna/processing/2_QC.R
+    seurat_to_sce: ../rna/processing/3_seurat_to_SCE.R
+    doublet_detection: ../rna/processing/4_doublet_detection.R
+    parse_doublets: ../rna/processing/5_parse_sample_metadata_after_doublets.R
+    mapping_mnn: ../rna/mapping/run/mnn/mapping_mnn.R
+    mapping_seurat: ../rna/mapping/run/seurat/mapping_seurat.R
+    parse_mapping: ../rna/mapping/run/parse_sample_metadata_after_mapping.R
+    dimensionality_reduction: ../rna/dimensionality_reduction/automated/dimensionality_reduction_sce.R
+
+
+################
+## Parameters ##
+################
+
+doublet_detection:
+    doublet_score_threshold: 1.25
+
+dimensionality_reduction:
+    npcs: 30
+    features: 1000
+    n_neighbors: 25
+    min_dist: 0.3
+    colour_by: ["sample", "celltype.mapped_mnn", "celltype.mapped_seurat", "doublet_score", "doublet_call"]
+    # colour_by: "nFeature_RNA"
+    # colour_by: ["celltype.mapped_seurat"]
+
+# lsf:
+#     1_create_seurat_rna:
+#         memory:
+#             20000

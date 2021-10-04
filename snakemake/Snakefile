@@ -1,0 +1,205 @@
+# TO-DO ADD HYPERPARAMETRS IN CONFIG.YAML
+
+import os
+from re import search
+import getpass
+
+
+############
+## Config ##
+############
+
+host = os.uname()[1]
+if search("BI2404M", host) and getpass.getuser()=="argelagr":
+    configfile: "config_ricard_local.yaml"
+elif search("[headstone|pebble]", host) and getpass.getuser()=="argelagr":
+    configfile: "config_ricard_babraham.yaml"
+elif search("[headstone|pebble]", host) and getpass.getuser()=="stephen":
+    configfile: "config_stephen_babraham.yaml"
+else:
+    print("Computer not recognised")
+    exit()
+
+# validate(config, schema="schemas/config.schema.yaml")
+
+###########
+## Rules ##
+###########
+
+# rule all:
+#     input:
+#         config["directories"]["results"]+"/rna/mapping/sample_metadata_after_mapping.txt.gz"
+        # expand("%s/rna/mapping/mapping_mnn_{sample}.txt.gz" % config["directories"]["results"], sample=config["samples"]),
+        # expand("%s/rna/mapping/mapping_seurat_{sample}.txt.gz" % config["directories"]["results"], sample=config["samples"])
+
+rule all:
+    input: 
+        # expand(config["directories"]["results"]+"/rna/doublet_detection/doublets_{sample}_{doublet_score_threshold}.txt.gz", 
+        #     sample = config["samples"], 
+        #     doublet_score_threshold = config["doublet_detection"]["doublet_score_threshold"]
+        # )
+        # config["directories"]["results"]+"/rna/doublet_detection/sample_metadata_after_doublets.txt.gz"
+        expand("%s/rna/dimensionality_reduction/umap_features{features}_pcs{npcs}_neigh{n_neighbors}_dist{min_dist}-{colour_by}.pdf" % (config["directories"]["results"]), 
+            # sample = config["samples"], 
+            features = config["dimensionality_reduction"]["features"], 
+            npcs = config["dimensionality_reduction"]["npcs"], 
+            n_neighbors = config["dimensionality_reduction"]["n_neighbors"], 
+            min_dist = config["dimensionality_reduction"]["min_dist"], 
+            colour_by = config["dimensionality_reduction"]["colour_by"]
+            )
+
+
+##################################################
+## Load count matrices and create Seurat object ##
+##################################################
+
+rule create_seurat:
+    input:
+        script=config["scripts"]["create_seurat"],
+        input_dir=config["directories"]["original_data"]
+    output:
+        seurat=config["directories"]["processed_data"]+"/seurat.rds",
+        metadata=config["directories"]["processed_data"]+"/metadata.txt.gz"
+    params:
+        outdir=config["directories"]["processed_data"],
+        sample=expand("{sample}", sample=config["samples"]),
+        memory=config["slurm"]["create_seurat"]["memory"]
+    conda:
+        "environment.yaml"
+    log: 
+        "logs/create_seurat.log"
+    shell:
+        "Rscript {input.script} --inputdir {input.input_dir} --outputdir {params.outdir} --samples {params.sample} > {log}"
+
+#####################
+## Quality control ##
+#####################
+
+rule qc:
+    input:
+    	metadata=rules.create_seurat.output.metadata,
+        script=config["scripts"]["qc"]
+    output:
+        qc_metrics_boxplot=config["directories"]["results"]+"/rna/qc/qc_metrics_boxplot.pdf",
+        qc_metrics_histogram=config["directories"]["results"]+"/rna/qc/qc_metrics_histogram.pdf",
+        metadata=config["directories"]["results"]+"/rna/qc/sample_metadata_after_qc.txt.gz"
+    params:
+        sample=expand("{sample}", sample=config["samples"]),
+        nFeature_RNA=1500,
+        percent_mt=15,
+        percent_rib=15,
+        outdir=config["directories"]["results"]+"/rna/qc",
+        memory=config["slurm"]["qc"]["memory"]
+    conda:
+        "environment.yaml"
+    log: 
+        "logs/qc.log"
+    shell:
+        "Rscript {input.script} --outputdir {params.outdir} --samples {params.sample} --nFeature_RNA {params.nFeature_RNA} --ribosomal_percent_RNA {params.percent_rib} --mitochondrial_percent_RNA {params.percent_mt} > {log}"
+
+
+###################################################
+## Convert Seurat object to SingleCellExperiment ##
+###################################################
+
+rule seurat_to_sce:
+    input:
+        seurat=config["directories"]["processed_data"]+"/seurat.rds",
+    	metadata=rules.qc.output.metadata,
+        script=config["scripts"]["seurat_to_sce"],
+    output:
+        sce=config["directories"]["processed_data"]+"/SingleCellExperiment.rds",
+    params:
+        sample=expand("{sample}", sample=config["samples"]),
+        memory=config["slurm"]["seurat_to_sce"]["memory"]
+    conda:
+        "environment.yaml"
+    log: 
+        "logs/seurat_to_sce.log"
+    shell:
+        "Rscript {input.script} --samples {params.sample} --seurat {input.seurat} --metadata {input.metadata} --outfile {output.sce} > {log}"
+
+
+#######################
+## Doublet detection ##
+#######################
+
+# io$outfile <- sprintf("%s/doublets_%s_%s.txt.gz",args$outdir, paste(args$samples,collapse="-"),round(args$hybrid_score_threshold,2))
+
+rule doublet_detection:
+    input:
+        sce=config["directories"]["processed_data"]+"/SingleCellExperiment.rds",
+        metadata=rules.qc.output.metadata,
+        script=config["scripts"]["doublet_detection"]
+    output:
+        outfile=config["directories"]["results"]+"/rna/doublet_detection/doublets_{sample}_{doublet_score_threshold}.txt.gz"
+        # metadata=config["directories"]["results"]+"/rna/doublet_detection/sample_metadata_after_doublet_detection.txt.gz"
+    conda:
+        "environment.yaml"
+    log: 
+        "logs/doublet_detection_{sample}_{doublet_score_threshold}.log"
+    params:
+        memory=config["slurm"]["doublet_detection"]["memory"]
+    shell:
+        "Rscript {input.script} --metadata {input.metadata} --sce {input.sce} --samples {wildcards.sample} --hybrid_score_threshold {wildcards.doublet_score_threshold}  --outfile {output} > {log}"
+
+rule parse_doublet_results:
+    input:
+        metadata=rules.qc.output.metadata,
+        script=config["scripts"]["parse_doublets"],
+        doublet_files=expand(config["directories"]["results"]+"/rna/doublet_detection/doublets_{sample}_{doublet_score_threshold}.txt.gz", 
+            sample=config["samples"], doublet_score_threshold=config["doublet_detection"]["doublet_score_threshold"]),
+    output:
+        config["directories"]["results"]+"/rna/doublet_detection/sample_metadata_after_doublets.txt.gz"
+    params:
+        memory=config["slurm"]["parse_doublet_results"]["memory"]
+    conda:
+        "environment.yaml"
+    log: 
+        "logs/parse_doublet_results.log"
+    shell:
+        "Rscript {input.script} --metadata {input.metadata} --doublet_files {input.doublet_files} --outfile {output} > {log}"
+
+
+##############################
+## Dimensionality reduction ##
+##############################
+
+# TO-DO: NO NEED TO RECOMPUTE THE UMAP FOR EACH OF THE COLOUR_BY ATTRIBUTES
+rule dimensionality_reduction: 
+    input:
+        script=config["scripts"]["dimensionality_reduction"],
+        sce=config["directories"]["processed_data"]+"/SingleCellExperiment.rds",
+        metadata=rules.parse_doublet_results.output
+    output:
+        config["directories"]["results"]+"/rna/dimensionality_reduction/umap_features{features}_pcs{npcs}_neigh{n_neighbors}_dist{min_dist}-{colour_by}.pdf"
+    conda:
+        "environment.yaml"
+    log: 
+        "logs/umap_features{features}_pcs{npcs}_neigh{n_neighbors}_dist{min_dist}-{colour_by}.log"
+    params:
+        memory=config["slurm"]["dimensionality_reduction"]["memory"]
+    shell:
+        "Rscript {input.script} --sce {input.sce} --metadata {input.metadata} --npcs {wildcards.npcs} --features {wildcards.features} --n_neighbors {wildcards.n_neighbors} --min_dist {wildcards.min_dist} --colour_by {wildcards.colour_by} --outfile {output} > {log}"
+
+
+# rule sex_assignment:
+#     input:
+#         sce=rules.seurat_to_sce.output.sce,
+#         script=config["scripts"]["sex"],
+#         outdir=config["directories"]["results"]+"/sex_assignment"
+#     output:
+#         sex_ychr_expr_per_gene=config["directories"]["results"]+"/sex/sex_ychr_expr_per_gene.pdf",
+#         sex_ychr_expr_aggregated=config["directories"]["results"]+"/sex/sex_ychr_expr_aggregated.pdf",
+#         xist_expr=config["directories"]["results"]+"/sex/xist_expr.pdf",
+#         sex_assignment=config["directories"]["results"]+"/sex/sex_assignment.txt.gz"
+#     params:
+#         sample=expand("{sample}", sample=config["samples"])[:2],
+#         # memory=config["lsf"]["sex"]["memory"],
+#         threshold_ratioY=0.001
+#     shell:
+#         "Rscript {input.script} --outdir {input.outdir} --sce {input.sce} --samples {params.sample} --threshold.ratioY {params.threshold_ratioY}"
+
+
+# (TO-DO) rule pseudobulk_rna:
+
