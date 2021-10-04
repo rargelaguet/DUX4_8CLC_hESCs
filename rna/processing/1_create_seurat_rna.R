@@ -153,8 +153,8 @@ metadata <- seurat@meta.data %>% as.data.table %>% .[,orig.ident:=NULL] %>%
 ## Save ##
 ##########
 
-fwrite(metadata, paste0(args$outputdir,"/metadata.txt.gz"), quote=F, na="NA", sep="\t")
+fwrite(metadata, file.path(args$outputdir,"metadata.txt.gz"), quote=F, na="NA", sep="\t")
 # fwrite(cell.info, paste0(args$outputdir,"/cell_info.txt.gz"), quote=F, na="NA", sep="\t")
 # fwrite(gene.info, paste0(args$outputdir,"/gene_info.txt.gz"), quote=F, na="NA", sep="\t")
-saveRDS(seurat, paste0(args$outputdir,"/seurat.rds"))
+saveRDS(seurat, file.path(args$outputdir,"seurat.rds"))
 

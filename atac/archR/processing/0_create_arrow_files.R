@@ -9,14 +9,8 @@ source(here::here("settings.R"))
 
 # Options
 opts$samples <- c(
-  # "E7.5_rep1",
-  # "E7.5_rep2",
-  # "E8.0_rep1",
-  # "E8.0_rep2",
-  # "E8.5_rep1",
-  # "E8.5_rep2",
-  "E8.75_rep1",
-  "E8.75_rep2"
+  "HNES1_DUX4_overexpression_L001",
+  "HNES1_wildtype_L001"
 )
 
 # I/O
@@ -32,8 +26,8 @@ opts$min.fragments <- 2500
 opts$filterTSS.score <- 3
 
 # ArchR options
-addArchRThreads(threads = 2) 
-addArchRGenome("mm10")
+addArchRThreads(threads = 1) 
+addArchRGenome("hg38")
 
 
 ########################
