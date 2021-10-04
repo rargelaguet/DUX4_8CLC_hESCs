@@ -14,14 +14,14 @@ suppressMessages(library(argparse))
 
 io <- list()
 if (grepl("ricard",Sys.info()['nodename'])) {
-  io$basedir <- "/Users/ricard/data/jasmin"
+  io$basedir <- "/Users/ricard/data/DUX4_hESCs_multiome"
   io$gene_metadata <- "/Users/ricard/data/ensembl/human/v93/bioMart/all_genes/Hsapiens_genes_BioMart.93.txt.gz"
   io$archR.directory <- paste0(io$basedir,"/processed/atac/archR")
 } else if (grepl("pebble|headstone", Sys.info()['nodename'])) {
-  if (grepl("jasmin", Sys.info()['effective_user'])) {
+  if (grepl("DUX4_hESCs_multiome", Sys.info()['effective_user'])) {
     stop()
   } else if (grepl("argelag", Sys.info()['effective_user'])) {
-    io$basedir <-'/bi/group/reik/ricard/data/jasmin'
+    io$basedir <-'/bi/group/reik/ricard/data/DUX4_hESCs_multiome'
     io$gene_metadata <- "/bi/group/reik/ricard/data/ensembl/human/v93/bioMart/all_genes/Hsapiens_genes_BioMart.93.txt.gz"
   }
 } else {
@@ -65,7 +65,7 @@ opts$chr <- paste0("chr",c(1:22,"X","Y"))
 ## Edit metadata ##
 ###################
 
-# io$metadata <- "/Users/ricard/data/jasmin/processed/atac/archR/sample_metadata_after_archR.txt.gz"
+# io$metadata <- "/Users/ricard/data/DUX4_hESCs_multiome/processed/atac/archR/sample_metadata_after_archR.txt.gz"
 # sample_metadata <- fread(io$metadata)
 # sample_metadata[,stage:=substr(sample,1,4)]
 # table(sample_metadata$stage)

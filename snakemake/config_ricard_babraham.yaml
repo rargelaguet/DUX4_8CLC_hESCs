@@ -1,7 +1,6 @@
 samples:
-  - AGTCAA_R7_L001_mm10_sorted_merged_rmdup_mtx2
-  - AGTTCC_R8_L001_mm10_sorted_merged_rmdup_mtx2
-  - CTTGTA_R6_L001_mm10_sorted_merged_rmdup_mtx2
+  - HNES1_DUX4_overexpression_L001
+  - HNES1_wildtype_L001
 
 
 #################
@@ -9,11 +8,10 @@ samples:
 #################
 
 directories:
-    base: /bi/group/reik/ricard/data/gastrulation_histones
-    original_data: /bi/group/reik/ricard/data/gastrulation_histones/original/rna
-    processed_data: /bi/group/reik/ricard/data/gastrulation_histones/processed/rna
-    results: /bi/group/reik/ricard/data/gastrulation_histones/results
-    atlas: /bi/group/reik/ricard/data/pijuansala2019_gastrulation10x
+    base: /bi/group/reik/ricard/data/DUX4_hESCs_multiome
+    original_data: /bi/group/reik/ricard/data/DUX4_hESCs_multiome/original/rna
+    processed_data: /bi/group/reik/ricard/data/DUX4_hESCs_multiome/processed/rna
+    results: /bi/group/reik/ricard/data/DUX4_hESCs_multiome/results
 
 #############
 ## Scripts ##
@@ -25,9 +23,6 @@ scripts:
     seurat_to_sce: ../rna/processing/3_seurat_to_SCE.R
     doublet_detection: ../rna/processing/4_doublet_detection.R
     parse_doublets: ../rna/processing/5_parse_sample_metadata_after_doublets.R
-    mapping_mnn: ../rna/mapping/run/mnn/mapping_mnn.R
-    mapping_seurat: ../rna/mapping/run/seurat/mapping_seurat.R
-    parse_mapping: ../rna/mapping/run/parse_sample_metadata_after_mapping.R
     dimensionality_reduction: ../rna/dimensionality_reduction/automated/dimensionality_reduction_sce.R
 
 ################
@@ -42,7 +37,7 @@ dimensionality_reduction:
     features: 1000
     n_neighbors: 25
     min_dist: 0.3
-    colour_by: ["sample", "celltype.mapped_mnn", "celltype.mapped_seurat", "doublet_score", "doublet_call"]
+    colour_by: ["sample", "doublet_score", "doublet_call"]
     # colour_by: "nFeature_RNA"
     # colour_by: ["celltype.mapped_seurat"]
 
@@ -56,12 +51,6 @@ slurm:  # memory in GB
     doublet_detection:
         memory: 6
     parse_doublet_results:
-        memory: 2
-    mapping_mnn:
-        memory: 30
-    mapping_seurat:
-        memory: 100
-    parse_mapping_results:
         memory: 2
     dimensionality_reduction:
         memory: 10

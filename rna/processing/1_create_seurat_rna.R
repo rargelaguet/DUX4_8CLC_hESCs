@@ -24,11 +24,11 @@ opts$trim.barcode <- FALSE
 opts$sample_cell_separator <- "#"
 
 ## START TEST ##
-# args <- list()
-# args$inputdir <- paste0(io$basedir,"/original/rna")
-# args$outputdir <- paste0(io$basedir,"/processed/rna")
-# args$samples <- opts$samples
-# args$test <- FALSE
+args <- list()
+args$inputdir <- file.path(io$basedir,"original/rna")
+args$outputdir <- file.path(io$basedir,"processed/rna")
+args$samples <- opts$samples
+args$test <- FALSE
 ## END TEST ##
 
 
@@ -39,52 +39,55 @@ opts$sample_cell_separator <- "#"
 stopifnot(args$samples%in%opts$samples)
 if (args$test) args$samples <- head(args$samples,n=2)
 
-mtx <- list()
+count_mtx <- list()
 cell.info <- list()
 gene.info <- list()
 
+i <- args$samples[1]
 for (i in args$samples) {
   print(i)
     
+  count_mtx[[i]] <- Read10X(sprintf("%s/%s",args$inputdir,i))[["Gene Expression"]]
+
   # Load gene metadata
-  gene.loc <- sprintf("%s/%s/genes.tsv.gz",args$inputdir,i)
-  gene.info[[i]] <- fread(gene.loc, header=F) %>%
-    setnames(c("ens_id","symbol")) %>%
-    .[,idx:=1:.N]
-  dim(gene.info[[i]])
+  # gene.loc <- sprintf("%s/%s/genes.tsv.gz",args$inputdir,i)
+  # gene.info[[i]] <- fread(gene.loc, header=F) %>%
+  #   setnames(c("ens_id","symbol")) %>%
+  #   .[,idx:=1:.N]
+  # dim(gene.info[[i]])
   
   # Load cell metadata
-  barcode.loc <- sprintf("%s/%s/barcodes.tsv.gz",args$inputdir,i)
-  cell.info[[i]] <- fread(barcode.loc, header=F) %>%
-    setnames("barcode") %>%
-    .[,barcode:=ifelse(rep(opts$trim.barcode,.N),gsub("-1","",barcode),barcode)] %>%
-    .[,c("sample","cell"):=list(i,sprintf("%s%s%s",i,opts$sample_cell_separator,barcode))]
-  dim(cell.info[[i]])
+  # barcode.loc <- sprintf("%s/%s/barcodes.tsv.gz",args$inputdir,i)
+  # cell.info[[i]] <- fread(barcode.loc, header=F) %>%
+  #   setnames("barcode") %>%
+  #   .[,barcode:=ifelse(rep(opts$trim.barcode,.N),gsub("-1","",barcode),barcode)] %>%
+  #   .[,c("sample","cell"):=list(i,sprintf("%s%s%s",i,opts$sample_cell_separator,barcode))]
+  # dim(cell.info[[i]])
   
   # Load matrix  
-  matrix.loc <- sprintf("%s/%s/matrix.mtx.gz",args$inputdir,i)
-  mtx[[i]] <- Matrix::readMM(matrix.loc)[gene.info[[i]]$idx,]
-  stopifnot(nrow(cell.info[[i]])==ncol(mtx[[i]]))
-  rownames(mtx[[i]]) <- gene.info[[i]]$symbol
-  colnames(mtx[[i]]) <- cell.info[[i]]$cell
+  # matrix.loc <- sprintf("%s/%s/matrix.mtx.gz",args$inputdir,i)
+  # count_mtx[[i]] <- Matrix::readMM(matrix.loc)[gene.info[[i]]$idx,]
+  # stopifnot(nrow(cell.info[[i]])==ncol(count_mtx[[i]]))
+  # rownames(count_mtx[[i]]) <- gene.info[[i]]$symbol
+  # colnames(count_mtx[[i]]) <- cell.info[[i]]$cell
   
   # Basic filtering
-  mtx[[i]] <- mtx[[i]][,colSums(mtx[[i]])>=500]
+  # count_mtx[[i]] <- count_mtx[[i]][,colSums(count_mtx[[i]])>=500]
 }
 
-print(lapply(mtx,dim))
+print(lapply(count_mtx,dim))
 
 #######################
 ## Keep common genes ##
 #######################
 
-genes <- Reduce("intersect",lapply(mtx,rownames))
-for (i in 1:length(mtx)) {
-  mtx[[i]] <- mtx[[i]][genes,]
+genes <- Reduce("intersect",lapply(count_mtx,rownames))
+for (i in 1:length(count_mtx)) {
+  count_mtx[[i]] <- count_mtx[[i]][genes,]
 }
 
-stopifnot(length(unique(lapply(mtx,nrow)))==1)
-stopifnot(length(unique(lapply(mtx,rownames)))==1)
+stopifnot(length(unique(lapply(count_mtx,nrow)))==1)
+stopifnot(length(unique(lapply(count_mtx,rownames)))==1)
 
 #################
 ## Concatenate ##
@@ -98,8 +101,8 @@ cell.info <- rbindlist(cell.info)
 rownames(cell.info) <- cell.info$cell
 
 # Concatenate matrices
-mtx <- do.call("cbind",mtx)
-# colnames(mtx) <- cell.info$cell
+count_mtx <- do.call("cbind",count_mtx)
+# colnames(count_mtx) <- cell.info$cell
 
 ##################
 ## Filter genes ##
@@ -110,34 +113,34 @@ mtx <- do.call("cbind",mtx)
 #     genes <- fread(opts$subset.proteincoding)[,ens_id]
 #     genes <- genes[genes %in% mouse.genes]
 #     mouse.genes <- mouse.genes[mouse.genes %in% genes]
-#     mtx <- mtx[mouse.genes,]
+#     count_mtx <- count_mtx[mouse.genes,]
 # }
 
 # Remove duplicated genes
-mtx <- mtx[!duplicated(rownames(mtx)),]
+count_mtx <- count_mtx[!duplicated(rownames(count_mtx)),]
 
 # Sanity checks
-stopifnot(sum(duplicated(rownames(mtx)))==0)
-stopifnot(sum(duplicated(colnames(mtx)))==0)
+stopifnot(sum(duplicated(rownames(count_mtx)))==0)
+stopifnot(sum(duplicated(colnames(count_mtx)))==0)
 
 ##########################
 ## Create Seurat object ##
 ##########################
 
-cell.info.to.seurat <- cell.info[cell%in%colnames(mtx)] %>% setkey(cell) %>% .[colnames(mtx)] %>% as.data.frame
+cell.info.to.seurat <- cell.info[cell%in%colnames(count_mtx)] %>% setkey(cell) %>% .[colnames(count_mtx)] %>% as.data.frame
 rownames(cell.info.to.seurat) <- cell.info.to.seurat$cell
-stopifnot(rownames(cell.info.to.seurat)==colnames(mtx))
+stopifnot(rownames(cell.info.to.seurat)==colnames(count_mtx))
 stopifnot(sum(is.na(rownames(cell.info.to.seurat$cell)))==0)
 
-seurat <- CreateSeuratObject(mtx, meta.data = cell.info.to.seurat)
+seurat <- CreateSeuratObject(count_mtx, meta.data = cell.info.to.seurat)
 
 head(seurat@meta.data)
 
 # Add mitochondrial percenatge
-seurat[["mitochondrial_percent_RNA"]] <- PercentageFeatureSet(seurat, pattern = "^mt-")
+seurat[["mitochondrial_percent_RNA"]] <- PercentageFeatureSet(seurat, pattern = "^MT-")
 
 # Add ribosomal RNA content
-ribo.genes <- c(grep(pattern = "^Rpl", x = rownames(seurat), value = TRUE), grep(pattern = "^Rps", x = rownames(seurat), value = TRUE))
+ribo.genes <- grep(pattern = "^RP[L|S]", x = rownames(seurat), value = TRUE)
 seurat[["ribosomal_percent_RNA"]] <- PercentageFeatureSet(seurat, features = ribo.genes)
 
 #####################
