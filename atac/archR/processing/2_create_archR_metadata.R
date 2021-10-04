@@ -8,7 +8,7 @@ here::i_am("atac/archR/processing/2_create_archR_metadata.R")
 source(here::here("settings.R"))
 
 # I/O
-io$metadata <- paste0(io$basedir,"/results/rna/doublets/sample_metadata_after_doublets.txt.gz")
+io$metadata <- paste0(io$basedir,"/results/rna/doublet_detection/sample_metadata_after_doublets.txt.gz")
 io$metadata.out <- paste0(io$archR.directory,"/sample_metadata.txt.gz")
 
 ###################
@@ -16,7 +16,7 @@ io$metadata.out <- paste0(io$archR.directory,"/sample_metadata.txt.gz")
 ###################
 
 sample_metadata <- fread(io$metadata) %>%
-  .[,c("cell", "sample", "barcode", "stage", "nFeature_RNA", "nCount_RNA", "mitochondrial_percent_RNA", "ribosomal_percent_RNA", "pass_rnaQC", "celltype.mapped", "celltype.score", "closest.cell","hybrid_score", "doublet_call")]
+  .[,c("cell", "sample", "barcode", "nFeature_RNA", "nCount_RNA", "mitochondrial_percent_RNA", "ribosomal_percent_RNA", "pass_rnaQC", "doublet_score", "doublet_call")]
        # "TSSEnrichment_atac", "ReadsInTSS_atac", "PromoterRatio_atac", "NucleosomeRatio_atac", "nFrags_atac", "BlacklistRatio_atac", "pass_atacQC")
 
 ########################

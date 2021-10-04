@@ -10,17 +10,13 @@ source(here::here("settings.R"))
 #####################
 
 # I/O
-# io$metadata <- paste0(io$basedir,"/processed/atac/archR/sample_metadata_after_archR.txt.gz")
+io$metadata <- paste0(io$basedir,"/processed/atac/archR/sample_metadata_after_archR.txt.gz")
 io$outdir <- file.path(io$basedir,"results/atac/archR/qc")
 
 # Options
 opts$samples <- c(
-  "E7.5_rep1",
-  "E7.5_rep2",
-  "E8.0_rep1",
-  "E8.0_rep2",
-  "E8.5_rep1",
-  "E8.5_rep2"
+  "HNES1_DUX4_overexpression_L001",
+  "HNES1_wildtype_L001"
 )
 
 # QC thresholds

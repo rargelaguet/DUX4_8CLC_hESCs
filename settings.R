@@ -16,7 +16,9 @@ io <- list()
 if (grepl("ricard",Sys.info()['nodename'])) {
   io$basedir <- "/Users/ricard/data/DUX4_hESCs_multiome"
   io$gene_metadata <- "/Users/ricard/data/ensembl/human/v93/bioMart/all_genes/Hsapiens_genes_BioMart.93.txt.gz"
-  io$archR.directory <- paste0(io$basedir,"/processed/atac/archR")
+} else if (grepl("BI2404M",Sys.info()['nodename'])) {
+    io$basedir <- "/Users/argelagr/data/DUX4_hESCs_multiome"
+    io$gene_metadata <- "/Users/argelagr/data/ensembl/human/v93/bioMart/all_genes/Hsapiens_genes_BioMart.93.txt.gz"
 } else if (grepl("pebble|headstone", Sys.info()['nodename'])) {
   if (grepl("DUX4_hESCs_multiome", Sys.info()['effective_user'])) {
     stop()
@@ -35,6 +37,8 @@ io$rna.seurat <- paste0(io$basedir,"/processed/rna/seurat.rds")
 io$rna.sce <- paste0(io$basedir,"/processed/rna/SingleCellExperiment.rds")
 io$rna.pseudobulk.sce <- paste0(io$basedir,"/results/rna/pseudobulk/SingleCellExperiment.rds")
 
+# ATAC archR
+io$archR.directory <- paste0(io$basedir,"/processed/atac/archR")
 
 #############
 ## Options ##

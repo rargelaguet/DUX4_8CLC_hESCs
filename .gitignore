@@ -7,3 +7,4 @@
 *.snakemake
 snakemake/logs
 *.pdf
+.Rproj.user

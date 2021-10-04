@@ -13,19 +13,13 @@ source(here::here("settings.R"))
 io$output.directory <- file.path(io$basedir,"processed/atac/archR")
 
 io$arrowFiles <- c(
-  # "E7.5_rep1" = file.path(io$basedir,"processed/atac/archR/ArrowFiles/E7.5_rep1.arrow"),
-  # "E7.5_rep2" = file.path(io$basedir,"processed/atac/archR/ArrowFiles/E7.5_rep2.arrow"),
-  # "E8.0_rep1" = file.path(io$basedir,"processed/atac/archR/ArrowFiles/E8.0_rep1.arrow"),
-  # "E8.0_rep2" = file.path(io$basedir,"processed/atac/archR/ArrowFiles/E8.0_rep2.arrow"),
-  # "E8.5_rep1" = file.path(io$basedir,"processed/atac/archR/ArrowFiles/E8.5_rep1.arrow"),
-  # "E8.5_rep2" = file.path(io$basedir,"processed/atac/archR/ArrowFiles/E8.5_rep2.arrow"),
-  "E8.75_rep1" = file.path(io$basedir,"processed/atac/archR/ArrowFiles/E8.75_rep1.arrow"),
-  "E8.75_rep2" = file.path(io$basedir,"processed/atac/archR/ArrowFiles/E8.75_rep2.arrow")
+  "HNES1_wildtype_L001" = file.path(io$basedir,"processed/atac/archR/ArrowFiles/HNES1_wildtype_L001.arrow"),
+  "HNES1_DUX4_overexpression_L001" = file.path(io$basedir,"processed/atac/archR/ArrowFiles/HNES1_DUX4_overexpression_L001.arrow")
 )
 
 # ArchR options
 addArchRThreads(threads = 1) 
-addArchRGenome("mm10")
+addArchRGenome("hg38")
 
 ############################
 ## create an ArchRProject ##
