@@ -41,13 +41,11 @@ if (args$test) args$samples <- head(args$samples,n=2)
 
 count_mtx <- list()
 cell.info <- list()
-gene.info <- list()
 
 i <- args$samples[1]
 for (i in args$samples) {
   print(i)
     
-  count_mtx[[i]] <- Read10X(sprintf("%s/%s",args$inputdir,i))[["Gene Expression"]]
 
   # Load gene metadata
   # gene.loc <- sprintf("%s/%s/genes.tsv.gz",args$inputdir,i)
@@ -57,14 +55,15 @@ for (i in args$samples) {
   # dim(gene.info[[i]])
   
   # Load cell metadata
-  # barcode.loc <- sprintf("%s/%s/barcodes.tsv.gz",args$inputdir,i)
-  # cell.info[[i]] <- fread(barcode.loc, header=F) %>%
-  #   setnames("barcode") %>%
-  #   .[,barcode:=ifelse(rep(opts$trim.barcode,.N),gsub("-1","",barcode),barcode)] %>%
-  #   .[,c("sample","cell"):=list(i,sprintf("%s%s%s",i,opts$sample_cell_separator,barcode))]
-  # dim(cell.info[[i]])
+  barcode.loc <- sprintf("%s/%s/barcodes.tsv.gz",args$inputdir,i)
+  cell.info[[i]] <- fread(barcode.loc, header=F) %>%
+    setnames("barcode") %>%
+    .[,barcode:=ifelse(rep(opts$trim.barcode,.N),gsub("-1","",barcode),barcode)] %>%
+    .[,c("sample","cell"):=list(i,sprintf("%s%s%s",i,opts$sample_cell_separator,barcode))]
+  dim(cell.info[[i]])
   
   # Load matrix  
+  count_mtx[[i]] <- Read10X(sprintf("%s/%s",args$inputdir,i))[["Gene Expression"]]
   # matrix.loc <- sprintf("%s/%s/matrix.mtx.gz",args$inputdir,i)
   # count_mtx[[i]] <- Matrix::readMM(matrix.loc)[gene.info[[i]]$idx,]
   # stopifnot(nrow(cell.info[[i]])==ncol(count_mtx[[i]]))
@@ -93,16 +92,13 @@ stopifnot(length(unique(lapply(count_mtx,rownames)))==1)
 ## Concatenate ##
 #################
 
-# Extract unique gene metadata
-# gene.info <- gene.info[[1]]
-
 # Concatenate cell metadata
 cell.info <- rbindlist(cell.info)
 rownames(cell.info) <- cell.info$cell
 
 # Concatenate matrices
 count_mtx <- do.call("cbind",count_mtx)
-# colnames(count_mtx) <- cell.info$cell
+colnames(count_mtx) <- cell.info$cell
 
 ##################
 ## Filter genes ##
