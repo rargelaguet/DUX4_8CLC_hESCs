@@ -6,3 +6,4 @@
 *.err
 *.snakemake
 snakemake/logs
+*.pdf
