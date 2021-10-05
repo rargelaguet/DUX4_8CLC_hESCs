@@ -1,92 +1,38 @@
+here::i_am("rna_atac/rna_vs_acc/pseudobulk/plot_rna_vs_acc_genes_pseudobulk.R")
+
 #####################
 ## define settings ##
 #####################
 
-if (grepl("ricard",Sys.info()['nodename'])) {
-  source("/Users/ricard/gastrulation_multiome_10x/settings.R")
-  source("/Users/ricard/gastrulation_multiome_10x/utils.R")
-} else if (grepl("ebi",Sys.info()['nodename'])) {
-  source("/homes/ricard/gastrulation_multiome_10x/settings.R")
-  source("/homes/ricard/gastrulation_multiome_10x/utils.R")
-} else {
-  stop("Computer not recognised")
-}
+source(here::here("settings.R"))
+source(here::here("utils.R"))
 
 
 # I/O
 # io$pseudobulk.GeneScoreMatrix <- sprintf("%s/pseudobulk/pseudobulk_%s_summarized_experiment.rds",io$archR.directory,opts$assay)
-io$archR.pseudobulk.GeneMatrix.se <- sprintf("%s/pseudobulk/pseudobulk_GeneScoreMatrix_nodistal_summarized_experiment.rds",io$archR.directory)
-io$outdir <- paste0(io$basedir,"/results/rna_atac/rna_vs_acc/pseudobulk")
+io$archR.pseudobulk.GeneMatrix.se <- sprintf("%s/pseudobulk/pseudobulk_GeneScoreMatrix_TSS_normalised_summarized_experiment.rds",io$archR.directory)
+io$outdir <- file.path(io$basedir,"/results/rna_atac/rna_vs_acc/pseudobulk")
 dir.create(paste0(io$outdir,"/per_gene"), showWarnings = F)
 dir.create(paste0(io$outdir,"/per_celltype"), showWarnings = F)
 
-
 # Options
-opts$celltypes <- c(
-  "Epiblast",
-  "Primitive_Streak",
-  "Caudal_epiblast",
-  "PGC",
-  "Anterior_Primitive_Streak",
-  "Notochord",
-  "Def._endoderm",
-  "Gut",
-  "Nascent_mesoderm",
-  "Mixed_mesoderm",
-  "Intermediate_mesoderm",
-  "Caudal_Mesoderm",
-  "Paraxial_mesoderm",
-  "Somitic_mesoderm",
-  "Pharyngeal_mesoderm",
-  "Cardiomyocytes",
-  "Allantois",
-  "ExE_mesoderm",
-  "Mesenchyme",
-  "Haematoendothelial_progenitors",
-  "Endothelium",
-  "Blood_progenitors_1",
-  "Blood_progenitors_2",
-  "Erythroid1",
-  "Erythroid2",
-  "Erythroid3",
-  "NMP",
-  "Rostral_neurectoderm",
-  "Caudal_neurectoderm",
-  "Neural_crest",
-  "Forebrain_Midbrain_Hindbrain",
-  "Spinal_cord",
-  "Surface_ectoderm",
-  "Visceral_endoderm",
-  "ExE_endoderm",
-  "ExE_ectoderm",
-  "Parietal_endoderm"
-)
-
-opts$assay <- "GeneScoreMatrix_nodistal"
+# opts$assay <- "GeneScoreMatrix_TSS"
 # opts$assay <- "GeneScoreMatrix"
-
-
-#######################
-## Load marker genes ##
-#######################
-
-marker_genes.dt <- fread(io$rna.atlas.marker_genes) %>%
-  .[celltype%in%opts$celltypes]
 
 ##########################
 ## Load pseudobulk ATAC ##
 ##########################
 
 # Load SummarizedExperiment
-atac.gene_scores.se <- readRDS(io$archR.pseudobulk.GeneMatrix.se)[,opts$celltypes]
+atac_GeneScores.se <- readRDS(io$archR.pseudobulk.GeneMatrix.se)
 
 # Rename features
-rownames(atac.gene_scores.se) <- rowData(atac.gene_scores.se)$name
+rownames(atac_GeneScores.se) <- rowData(atac_GeneScores.se)$name
 
 # Prepare data.table
-atac.dt <- assay(atac.gene_scores.se,opts$assay) %>% as.data.table %>% 
-  .[,gene:=rowData(atac.gene_scores.se)[,"name"]] %>%
-  melt(id.vars=c("gene"), variable.name="celltype") %>%
+atac.dt <- assay(atac_GeneScores.se,"GeneScoreMatrix_TSS") %>% as.data.table %>% 
+  .[,gene:=rowData(atac_GeneScores.se)[,"name"]] %>%
+  melt(id.vars="gene", variable.name="celltype") %>%
   # .[,celltype:=stringr::str_replace_all(celltype,opts$celltypes.to.rename)] %>%
   .[,.(atac=mean(value)), by=c("gene","celltype")]
 
@@ -95,7 +41,7 @@ atac.dt <- assay(atac.gene_scores.se,opts$assay) %>% as.data.table %>%
 #########################
 
 # Load SingleCellExperiment
-sce.pseudobulk <- readRDS(io$rna.pseudobulk.sce)[,opts$celltypes]
+sce.pseudobulk <- readRDS(io$rna.pseudobulk.sce)
 
 # Prepare data.table
 rna.dt <- as.matrix(logcounts(sce.pseudobulk)) %>% t %>% 
@@ -139,22 +85,24 @@ dt <- merge(rna.dt, atac.dt, by = c("gene","celltype"))
 ###############################
 
 opts$min.atac <- 0
-opts$max.atac <- 5
+opts$max.atac <- 3
 
 opts$min.expr <- min(rna.dt$expr)
-opts$max.expr <- 15
+opts$max.expr <- 10
 
 dt[expr>opts$max.expr,expr:=opts$max.expr]
 dt[atac>opts$max.atac,atac:=opts$max.atac]
 
+genes.to.plot <- opts$ZGA_genes
 
+i <- "TRUE"
 for (i in unique(dt$celltype)) {
   
-  to.plot <- dt[celltype==i]# %>% head(n=1000)
+  to.plot <- dt[celltype==i & gene%in%genes.to.plot]# %>% head(n=1000)
   
   p <- ggplot(to.plot, aes(x=expr, y=atac)) +
-    ggrastr::geom_point_rast(color="black", size=0.5) +
-    geom_smooth(method="lm") + stat_cor(method = "pearson") +
+    geom_point(color="black", size=2) +
+    # geom_smooth(method="lm") + stat_cor(method = "pearson") +
     coord_cartesian(xlim=c(opts$min.expr,opts$max.expr+0.25), ylim=c(opts$min.atac,opts$max.atac+0.25)) +
     ggrepel::geom_text_repel(aes(label=gene), size=3, data=to.plot[expr>4 & atac>3]) +
     labs(x="RNA expression", y="Gene accessibility", title=i) +
@@ -165,9 +113,9 @@ for (i in unique(dt$celltype)) {
       legend.position = "none"
     )
   
-  pdf(sprintf("%s/per_celltype/%s_acc_vs_rna_pseudobulk.pdf",io$outdir,i), width = 8, height = 6)
+  # pdf(sprintf("%s/per_celltype/%s_acc_vs_rna_pseudobulk.pdf",io$outdir,i), width = 8, height = 6)
   print(p)
-  dev.off()
+  # dev.off()
 }
 
 
@@ -180,18 +128,17 @@ genes.to.plot <- dt %>%
   setorder(-var_expr) %>% 
   head(n=100) %>% .$gene
 
+genes.to.plot <- opts$ZGA_genes
 
-genes.to.plot <- c("Ubb", "Top2a", "Actg1", "Gapdh")
-
+i <- "ZSCAN4"
 for (i in genes.to.plot) {
   outfile <- sprintf("%s/per_gene/individual_genes/%s_rna_vs_acc_pseudobulk.pdf",io$outdir,i)
   if (!file.exists(outfile)) {
     to.plot <- dt[gene==i]
     
-    p <- ggplot(to.plot, aes(x=atac, y=expr)) +
-      ggrastr::geom_point_rast(aes(fill=celltype), color="black", shape=21, size=3, stroke=0.5) +
-      geom_smooth(method="lm", color="black", fill="black", alpha=0.25) + stat_cor(method = "pearson") +
-      scale_fill_manual(values=opts$celltype.colors) +
+    p <- ggplot(to.plot, aes(x=atac, y=expr, fill=celltype)) +
+      geom_point(color="black", shape=21, size=3, stroke=0.5) +
+      # scale_fill_manual(values=opts$celltype.colors) +
       # coord_cartesian(xlim=c(opts$min.expr,opts$max.expr+0.01), ylim=c(opts$min.acc,opts$max.acc+0.01)) +
       # ggrepel::geom_text_repel(aes(label=celltype), size=3, data=to.plot[expr>2 | atac>2]) +
       labs(x="Gene accessibility", y="RNA expression", title=i) +
@@ -199,13 +146,13 @@ for (i in genes.to.plot) {
       theme(
         plot.title = element_text(hjust=0.5),
         axis.text = element_text(color="black"),
-        legend.position = "none"
+        legend.position = "right"
       )
     
-    pdf(outfile, width = 6, height = 5)
+    # pdf(outfile, width = 6, height = 5)
     # png(sprintf("%s/per_gene/%s_acc_vs_rna_pseudobulk.png",io$outdir,i), width = 500, height = 400)
     print(p)
-    dev.off()
+    # dev.off()
   }
 }
 

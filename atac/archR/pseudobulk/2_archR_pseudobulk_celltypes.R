@@ -10,18 +10,18 @@ source(here::here("settings.R"))
 source(here::here("utils.R"))
 
 # I/O
-io$outdir <- file.path(io$archR.directory,"pseudobulk")
+io$outdir <- file.path(io$archR.directory,"pseudobulk"); dir.create(io$outdir, showWarnings=F)
 
 # Options
-opts$matrices.to.pseudobulk <- "DeviationMatrix_Motif_cisbp_lenient" # c("PeakMatrix","GeneScoreMatrix","GeneScoreMatrix_nodistal")
-opts$group.by <- "celltype.predicted"
+opts$matrices.to.pseudobulk <- c("PeakMatrix","GeneScoreMatrix_distal","GeneScoreMatrix_TSS")
+opts$group.by <- "eight_cell_like_ricard"
 
 ########################
 ## Load cell metadata ##
 ########################
 
 sample_metadata <- fread(io$metadata) %>%
-  .[pass_atacQC==TRUE & doublet_call==FALSE & !is.na(celltype.predicted)] %>%
+  .[pass_atacQC==TRUE & !is.na(eight_cell_like_ricard)] %>%
   .[sample%in%opts$samples]
 
 ########################
@@ -34,7 +34,21 @@ source(here::here("atac/archR/load_archR_project.R"))
 ArchRProject.filt <- ArchRProject[sample_metadata$cell]
 table(getCellColData(ArchRProject.filt,"Sample")[[1]])
 
-# getAvailableMatrices(ArchRProject)
+###########################
+## Update ArchR metadata ##
+###########################
+
+foo <- sample_metadata %>% 
+  .[cell%in%rownames(ArchRProject.filt)] %>% setkey(cell) %>% .[rownames(ArchRProject.filt)] %>%
+  as.data.frame() %>% tibble::column_to_rownames("cell")
+stopifnot(all(rownames(foo) == rownames(getCellColData(ArchRProject.filt))))
+ArchRProject.filt <- addCellColData(
+  ArchRProject.filt,
+  data = foo[[opts$group.by]], 
+  name = opts$group.by,
+  cells = rownames(foo),
+  force = TRUE
+)
 
 ###################################################
 ## Pseudobulk into a SummarizedExperiment object ##
@@ -43,6 +57,9 @@ table(getCellColData(ArchRProject.filt,"Sample")[[1]])
 if (is.null(opts$matrices.to.pseudobulk)) {
 	opts$matrices.to.pseudobulk <- getAvailableMatrices(ArchRProject.filt)
 }
+
+
+stopifnot(opts$matrices.to.pseudobulk%in%getAvailableMatrices(ArchRProject.filt))
 
 se_list <- list()
 for (i in opts$matrices.to.pseudobulk) {

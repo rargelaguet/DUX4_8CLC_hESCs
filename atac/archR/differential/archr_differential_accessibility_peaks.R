@@ -17,11 +17,11 @@ args <- p$parse_args(commandArgs(TRUE))
 
 ## START TEST
 args <- list()
-args$matrix <- "PeakMatrix"
+args$matrix <- "GeneScoreMatrix_TSS"
 args$test <- "wilcoxon"
 args$groupA <- "FALSE"
 args$groupB <- "TRUE"
-args$outfile <- tempfile()
+args$outfile <- file.path(io$basedir,"results/atac/archR/differential/PeakMatrix/eight_cell_like_ricard_differential_GeneScoreMatrix_TSS.tsv.gz")
 args$group.by <- "eight_cell_like_ricard"
 ## END TEST
 
@@ -114,7 +114,6 @@ dt <- cbind(dt.1,dt.2) %>% setorder(-AUC)
 ##########
 
 fwrite(dt, args$outfile, sep="\t")
-
 
 ################
 ## START TEST ##

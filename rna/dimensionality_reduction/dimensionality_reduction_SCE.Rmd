@@ -79,10 +79,14 @@ Run PCA
 sce_filt <- scater::runPCA(sce_filt, ncomponents = 25, ntop=nrow(sce_filt))
 ```
 
+```{r}
+# cor(colMeans(assay(sce,"logcounts")), reducedDim(sce_filt, "PCA"))
+```
+
 Plot PCA
 ```{r}
-plotPCA(sce_filt, colour_by="sample", ncomponents = c(2,1))
-# plotPCA(sce_filt, colour_by="foo", ncomponents = c(1,2))
+plotPCA(sce_filt, colour_by="sample", ncomponents = c(1,2))
+plotPCA(sce_filt, colour_by="foo", ncomponents = 1:5)
 ```
 
 
@@ -98,7 +102,7 @@ sce_filt <- runUMAP(sce_filt, dimred="PCA", n_neighbors = 30, min_dist = 0.40)
 Plot UMAP
 
 ```{r}
-# plotUMAP(sce_filt, colour_by="foo", ncomponents = 1:2)
+plotUMAP(sce_filt, colour_by="foo", ncomponents = 1:2)
 ```
 
 ```{r}
@@ -140,9 +144,16 @@ Save coordinates
 # TEST
 
 ```{r}
+
+```
+
+```{r}
 sce_tmp <- sce[opts$ZGA_genes,]
 sce_tmp <- scater::runPCA(sce_tmp, ncomponents = 2, ntop=nrow(sce_tmp))
-plotPCA(sce_tmp, colour_by="sample", ncomponents = c(1,2))
+
+sce_tmp$jasmin_8clc <- sce_tmp$barcode%in%interesting.cells.jasmin
+
+plotPCA(sce_tmp, colour_by="jasmin_8clc", ncomponents = c(1,2))
 ```
 
 ```{r}
@@ -162,7 +173,7 @@ interesting.cells.jasmin <- fread("/Users/argelagr/data/DUX4_hESCs_multiome/resu
 metadata[,`eight_cell_like_jasmin`:=barcode%in%interesting.cells.jasmin]
 table(metadata$eight_cell_like_jasmin)
 table(metadata$eight_cell_like_ricard)
-fwrite(metadata, file.path(io$basedir,"results/rna/dimensionality_reduction/sample_metadata_after_clustering.txt.gz"), sep="\t", quote=F, na="NA")
+# fwrite(metadata, file.path(io$basedir,"results/rna/dimensionality_reduction/sample_metadata_after_clustering.txt.gz"), sep="\t", quote=F, na="NA")
 ```
 
 
