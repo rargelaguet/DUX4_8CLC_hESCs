@@ -22,11 +22,13 @@ io$fragment_files <- opts$samples %>%
   set_names(opts$samples)
 
 # Options
-opts$min.fragments <- 2500
-opts$filterTSS.score <- 3
+opts$min.fragments <- 1000
+opts$filterTSS.score <- 2.5
+opts$max.fragments <- 1e7
+
 
 # ArchR options
-addArchRThreads(threads = 1) 
+addArchRThreads(threads = 2) 
 addArchRGenome("hg38")
 
 
@@ -46,10 +48,11 @@ ArrowFiles <- createArrowFiles(
   sampleNames = names(io$fragment_files),
   outputNames = names(io$fragment_files),
   addTileMat = FALSE,
-  addGeneScoreMat = TRUE,
+  addGeneScoreMat = FALSE,
   excludeChr = c("chrM", "chrY"),
 
   # QC metrics
   minFrags = opts$min.fragments,  # The minimum number of fragments per cell
+  maxFrags = opts$max.fragments,  # The maximum number of fragments per cell
   minTSS = opts$filterTSS.score   # The minimum TSS enrichment score per cell
 )

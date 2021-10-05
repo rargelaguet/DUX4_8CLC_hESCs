@@ -1,0 +1,186 @@
+---
+title: "Dimensionality reduction"
+---
+  
+```{r load_modules, echo=FALSE, include=FALSE}
+library(SingleCellExperiment)
+library(scran)
+library(scater)
+```
+
+# Define settings
+
+```{r}
+source(here::here("settings.R"))
+source(here::here("utils.R"))
+```
+
+Define I/O
+```{r define_io, echo=FALSE}
+io$outdir <- paste0(io$basedir,"/results/rna/dimensionality_reduction")
+```
+
+Define options
+```{r}
+```
+
+# Load sample metadata
+
+```{r load_metadata, echo=FALSE}
+sample_metadata <- fread(io$metadata) %>%
+  # .[pass_rnaQC==TRUE & doublet_call==FALSE] %>%
+  .[pass_rnaQC==TRUE]
+table(sample_metadata$sample)
+```
+
+# Load data
+
+Load RNA expression data as SingleCellExperiment object
+```{r load_data, echo=FALSE}
+sce <- load_SingleCellExperiment(io$rna.sce, normalise = TRUE, cells = sample_metadata$cell)
+dim(sce)
+```
+
+Add sample metadata to the colData of the SingleCellExperiment
+```{r}
+colData(sce) <- sample_metadata %>% as.data.frame %>% tibble::column_to_rownames("cell") %>%
+  .[colnames(sce),] %>% DataFrame()
+```
+
+# Filter features
+```{r}
+sce <- sce[grep("^Rik|Rik$|^mt-|^Rps-|^Gm",rownames(sce),invert=T)]
+```
+
+# Feature selection
+
+Select HVG
+```{r}
+decomp <- modelGeneVar(sce) %>% as.data.table(keep.rownames = T) %>% setnames("rn","gene") %>% setorder(FDR,na.last=T)
+hvgs <- decomp[mean>0.001 & p.value<0.10,gene]
+
+# Subset SingleCellExperiment
+sce_filt <- sce[hvgs,]
+dim(sce_filt)
+```
+
+```{r message=FALSE}
+# logcounts(sce_filt) <- RegressOutMatrix(
+#   mtx = logcounts(sce_filt), 
+#   covariates = colData(sce_filt)[,c("nFeature_RNA","mtFraction_RNA"),drop=F]
+# )
+```
+
+# PCA
+
+Run PCA
+```{r}
+# reducedDim(sce_filt, "PCA") <- irlba::prcomp_irlba(data, n=npcs)$x[,1:npcs]
+sce_filt <- scater::runPCA(sce_filt, ncomponents = 25, ntop=nrow(sce_filt))
+```
+
+Plot PCA
+```{r}
+plotPCA(sce_filt, colour_by="sample", ncomponents = c(2,1))
+plotPCA(sce_filt, colour_by="foo", ncomponents = c(1,2))
+```
+
+
+# UMAP
+
+Run UMAP
+```{r}
+set.seed(42)
+sce_filt <- runUMAP(sce_filt, dimred="PCA", n_neighbors = 30, min_dist = 0.40)
+# reducedDim(sce, "UMAP") <- reducedDim(sce_filt, "UMAP") 
+```
+
+Plot UMAP
+
+```{r}
+plotUMAP(sce_filt, colour_by="foo", ncomponents = 1:2)
+```
+
+```{r}
+to.plot <- reducedDim(sce_filt,"UMAP") %>% as.data.table %>% 
+  .[,cell:=colnames(sce_filt)] %>%
+    merge(sample_metadata, by="cell")
+```
+
+Colour by sample
+```{r}
+p <- ggplot(to.plot, aes(x=V1, y=V2, fill=sample)) +
+  ggrastr::geom_point_rast(size=1.5, shape=21, stroke=0.1) +
+  # geom_point(size=1.5, shape=21, stroke=0.1) +
+  # scale_fill_manual(values=opts$stage.colors) +
+  guides(fill = guide_legend(override.aes = list(size=4))) +
+  theme_classic() +
+  theme(
+    axis.title = element_blank(),
+    axis.text = element_blank(),
+    axis.ticks = element_blank(),
+    legend.position="top",
+    legend.title=element_blank()
+  )
+
+# pdf(paste0(io$outdir,"/umap_by_sample.pdf"), width=8, height=5.5)
+print(p)
+# dev.off()
+```
+
+
+Save coordinates
+```{r}
+# umap.dt <- reducedDim(sce_filt,"UMAP") %>% as.data.table %>% 
+#   .[,cell:=colnames(sce_filt)] %>%
+#   setnames(c("UMAP1","UMAP2","cell"))
+# fwrite(umap.dt, paste0(io$outdir,"/umap_allsamples.txt.gz"))
+```
+
+# TEST
+
+```{r}
+sce_tmp <- sce[opts$ZGA_genes,]
+sce_tmp <- scater::runPCA(sce_tmp, ncomponents = 2, ntop=nrow(sce_tmp))
+plotPCA(sce_tmp, colour_by="sample", ncomponents = c(1,2))
+```
+
+```{r}
+interesting.cells <- names(which(reducedDim(sce_tmp,"PCA")[,"PC1"]>2.5))
+length(interesting.cells)
+
+sce_filt$foo <- colnames(sce_filt)%in%interesting.cells
+```
+
+```{r}
+metadata <- fread(io$metadata)
+metadata[,`eight_cell_like_ricard`:=cell%in%interesting.cells]
+
+interesting.cells.jasmin <- fread("/Users/argelagr/data/DUX4_hESCs_multiome/results/rna/DUX4-OE_seurat-clusters.txt") %>%
+  .[V2==6,V1]
+metadata[,`eight_cell_like_jasmin`:=barcode%in%interesting.cells.jasmin]
+table(metadata$eight_cell_like_jasmin)
+table(metadata$eight_cell_like_ricard)
+```
+
+
+```{r}
+plotPCA(sce_tmp, colour_by="ZSCAN4", ncomponents = c(1,2))
+```
+
+```{r}
+celltypes.to.plot <- c("ExE_endoderm","Erythroid3","Cardiomyocytes")
+# celltypes.to.plot <- unique(marker_genes.dt$celltype)
+
+for (i in celltypes.to.plot) {
+  genes.to.plot <- marker_genes.dt[celltype==i & score>=0.9,gene] 
+  genes.to.plot <- genes.to.plot[genes.to.plot %in% rownames(sce_filt)] %>% head(n=5)
+  for (j in genes.to.plot) {
+    p <- plotUMAP(sce_filt, colour_by=j)
+    pdf(sprintf("%s/umap_%s_%s.pdf",io$outdir,i,j))
+    print(p)
+    dev.off()
+  }
+}
+```
+

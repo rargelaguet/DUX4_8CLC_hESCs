@@ -1,6 +1,7 @@
 suppressPackageStartupMessages(library(argparse))
+suppressPackageStartupMessages(library(ArchR))
 
-here::i_am("atac/archR/processing/4_add_GeneScore_matrices.R")
+here::i_am("atac/archR/dimensionality_reduction/automated/archR_dimensionality_reduction.R")
 
 ######################
 ## Define arguments ##
@@ -29,24 +30,27 @@ args <- p$parse_args(commandArgs(TRUE))
 source(here::here("settings.R"))
 source(here::here("utils.R"))
 
+
+## START TEST ##
+args <- list()
+args$metadata <- file.path(io$basedir,"results/atac/archR/qc/sample_metadata_after_qc.txt.gz")
+args$samples <- opts$samples
+args$nfeatures <- 15000
+args$matrix <- "GeneScoreMatrix_TSS"
+args$ndims <- 30
+args$seed <- 42
+args$n_neighbors <- 25
+args$min_dist <- 0.3
+args$colour_by <- c("sample","log_nFrags_atac")
+args$outdir <- file.path(io$basedir,"results/atac/archR/dimensionality_reduction")
+## END TEST ##
+
 # I/O
 io$pdfdir <- sprintf("%s/pdf",args$outdir); dir.create(io$pdfdir,showWarnings = F)
 
 # Options
 opts$lsi.iterations = 2
 opts$lsi.cluster.resolution = 2
-
-## START TEST ##
-# args$metadata <- io$metadata
-# args$samples <- opts$samples[1:2]
-# args$nfeatures <- 15000
-# args$matrix <- "PeakMatrix"
-# args$ndims <- 30
-# args$colour_by <- c("celltype.predicted","sample","log_nFrags_atac","doublet_call")
-# args$batch.variable <- "stage"
-# args$batch.method <- "Harmony"
-# args$outdir <- paste0(io$basedir,"/results/atac/archR/dimensionality_reduction")
-## END TEST ##
 
 ##########################
 ## Load sample metadata ##
@@ -58,14 +62,12 @@ sample_metadata <- fread(args$metadata) %>%
   .[,log_nFrags_atac:=log10(nFrags_atac)]
 
 table(sample_metadata$sample)
-table(sample_metadata$celltype.predicted)
 
 ########################
 ## Load ArchR project ##
 ########################
 
 source(here::here("atac/archR/load_archR_project.R"))
-
 
 ###################
 ## Sanity checks ##
@@ -92,13 +94,13 @@ ArchRProject.filt <- ArchRProject[sample_metadata$cell]
 ArchRProject.filt@sampleColData <- ArchRProject.filt@sampleColData[args$samples,,drop=F]
 
 # Update ArchR metadata
-stopifnot(sample_metadata$cell == rownames(getCellColData(ArchRProject.filt)))
-ArchRProject.filt <- addCellColData(ArchRProject.filt,
-  data = sample_metadata$stage, 
-  name = "stage",
-  cells = sample_metadata$cell,
-  force = TRUE
-)
+# stopifnot(sample_metadata$cell == rownames(getCellColData(ArchRProject.filt)))
+# ArchRProject.filt <- addCellColData(ArchRProject.filt,
+#   data = sample_metadata$stage, 
+#   name = "stage",
+#   cells = sample_metadata$cell,
+#   force = TRUE
+# )
 
 #######################
 ## Feature selection ##
@@ -127,8 +129,6 @@ if (args$matrix=="PeakMatrix_filt") {
     binarize = TRUE
   )
   
-  # foo <- getMatrixFromProject(ArchRProject.filt, useMatrix = "PeakMatrix_filt", binarize = TRUE)
-  # foo <- getMatrixFromProject(ArchRProject.filt, useMatrix = "PeakMatrix", binarize = TRUE)
 }
 
 ###########################
@@ -268,7 +268,7 @@ for (i in args$n_neighbors) {
       # }
       
       # Save UMAP plot
-      outfile <- sprintf("%s/%s_umap_nfeatures%d_ndims%d_neigh%d_dist%s_%s.pdf",io$pdfdir, paste(args$samples,collapse="-"), args$nfeatures, args$ndims, i, j, k)
+      outfile <- sprintf("%s/%s_umap_nfeatures%d_ndims%d_neigh%d_dist%s_%s.pdf",args$outdir, paste(args$samples,collapse="-"), args$nfeatures, args$ndims, i, j, k)
       pdf(outfile, width=7, height=5)
       print(p)
       dev.off()

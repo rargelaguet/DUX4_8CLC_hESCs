@@ -9,7 +9,7 @@ source(here::here("settings.R"))
 
 # I/O
 io$metadata <- paste0(io$basedir,"/results/rna/doublet_detection/sample_metadata_after_doublets.txt.gz")
-io$metadata.out <- paste0(io$archR.directory,"/sample_metadata.txt.gz")
+io$metadata.out <- paste0(io$archR.directory,"/sample_metadata_after_archR.txt.gz")
 
 ###################
 ## Load metadata ##
@@ -53,15 +53,17 @@ sample_metadata_all <- sample_metadata %>%
 # Fill missing entries
 sample_metadata_all %>%
   .[is.na(sample),sample:=strsplit(cell,"#") %>% map_chr(1)] %>%
-  .[is.na(barcode),barcode:=strsplit(cell,"#") %>% map_chr(2)] %>%
-  .[is.na(stage),stage:=strsplit(sample,"_") %>% map_chr(1)]
+  .[is.na(barcode),barcode:=strsplit(cell,"#") %>% map_chr(2)]
+
+# round
+sample_metadata_all[,c("TSSEnrichment_atac","NucleosomeRatio_atac","PromoterRatio_atac","BlacklistRatio_atac"):=list(round(TSSEnrichment_atac,2),round(NucleosomeRatio_atac,2),round(PromoterRatio_atac,2),round(BlacklistRatio_atac,2))]
+sample_metadata_all[,c("ribosomal_percent_RNA","mitochondrial_percent_RNA"):=list(round(ribosomal_percent_RNA,2),round(mitochondrial_percent_RNA,2))]
 
 # sanity checks
-table(sample_metadata$stage)
 table(sample_metadata$sample)
 stopifnot(all(!is.na(sample_metadata_all$sample)))
 stopifnot(all(!is.na(sample_metadata_all$barcode)))
-stopifnot(all(!is.na(sample_metadata_all$stage)))
+
 
 #############################
 ## Update ArchR's metadata ##
@@ -71,7 +73,7 @@ metadata.to.archR <- sample_metadata_all %>%
   .[cell%in%rownames(ArchRProject)] %>% setkey(cell) %>% .[rownames(ArchRProject)] %>%
   as.data.frame() %>% tibble::column_to_rownames("cell")
 
-stopifnot(all(metadata.to.archR$TSSEnrichment_atac == getCellColData(ArchRProject, "TSSEnrichment")[[1]]))
+# stopifnot(all(metadata.to.archR$TSSEnrichment_atac == getCellColData(ArchRProject,"TSSEnrichment")[[1]]))
 
 for (i in colnames(metadata.to.archR)) {
   ArchRProject <- addCellColData(

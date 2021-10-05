@@ -4,7 +4,8 @@
 ## Define settings ##
 #####################
 
-here::i_am("atac/archR/processing/4_add_GeneScore_matrices.R")
+here::i_am("atac/archR/gene_scores/add_GeneScore_matrices.R")
+
 source(here::here("settings.R"))
 source(here::here("utils.R"))
 
@@ -32,7 +33,7 @@ addGeneScoreMatrix(
   input = ArchRProject,
   genes = genes.gr,
   geneModel = "exp(-abs(x)/5000) + exp(-1)", # string should be a function of x, where x is the distance from the TSS.
-  matrixName = "GeneScoreMatrix",
+  matrixName = "GeneScoreMatrix_distal",
   extendUpstream = c(1000, 1e+05),
   extendDownstream = c(1000, 1e+05),  # The minimum and maximum number of bp downstream of the transcription termination site to consider for gene activity score calculation.
   geneUpstream = 5000,                # Number of bp upstream the gene to extend the gene body.
@@ -55,7 +56,7 @@ addGeneScoreMatrix(
   useTSS = TRUE,
   extendTSS = TRUE,
   geneModel = "1",                    # string should be a function of x, where x is the distance from the TSS.
-  matrixName = "GeneScoreMatrix_nodistal",
+  matrixName = "GeneScoreMatrix_TSS",
   extendUpstream = c(0,0),
   extendDownstream = c(0,0),          # The minimum and maximum number of bp downstream of the transcription termination site to consider for gene activity score calculation.
   geneUpstream = 500,                # Number of bp upstream the gene to extend the gene body.

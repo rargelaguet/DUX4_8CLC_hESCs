@@ -53,6 +53,11 @@ opts$samples <- c(
 
 opts$chr <- paste0("chr",c(1:22,"X","Y"))
 
+opts$ZGA_genes <- c(
+  "CCNA1","DUXA","KDM4E","KHDC1L","LEUTX","MBD3L2","MBD3L3","PRAMEF1","PRAMEF12", 
+  "PRAMEF11","RFPL2","RFPL4A","RFPL4B","SLC34A2","TRIM43","TRIM43B","TRIM49","TRIM49B","ZNF296","ZSCAN4"
+)
+
 ###################
 ## Load metadata ##
 ###################
