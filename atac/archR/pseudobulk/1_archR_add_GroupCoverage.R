@@ -1,5 +1,7 @@
 # https://www.ArchRProject.com/bookdown/how-does-archr-make-pseudo-bulk-replicates.html
 
+here::i_am("atac/archR/pseudobulk/1_archR_add_GroupCoverage.R")
+
 #####################
 ## Define settings ##
 #####################
@@ -7,17 +9,18 @@
 source(here::here("settings.R"))
 source(here::here("utils.R"))
 
+# I/O
+io$metadata <- file.path(io$basedir,"/results/rna/dimensionality_reduction/sample_metadata_after_clustering.txt.gz")
+
+# Options
+opts$group.by <- "eight_cell_like_ricard"
+
 ########################
 ## Load ArchR project ##
 ########################
 
 source(here::here("atac/archR/load_archR_project.R"))
 
-# I/O
-io$metadata <- file.path(io$basedir,"/results/rna/dimensionality_reduction/sample_metadata_after_clustering.txt.gz")
-
-# Options
-opts$group.by <- "eight_cell_like_ricard"
 addArchRThreads(threads = 2)
 
 ########################
@@ -34,12 +37,15 @@ sample_metadata <- fread(io$metadata) %>%
 # Subset
 ArchRProject.filt <- ArchRProject[sample_metadata$cell]
 
-# Update archR metadata
+###########################
+## Update ArchR metadata ##
+###########################
+
 sample_metadata.to.archr <- sample_metadata %>% 
   .[cell%in%rownames(ArchRProject.filt)] %>% setkey(cell) %>% .[rownames(ArchRProject.filt)] %>%
   as.data.frame() %>% tibble::column_to_rownames("cell")
 
-stopifnot(all(rownames(sample_metadata.to.archr) == rownames(getCellColData(ArchRProject.filt),"TSSEnrichment")))
+stopifnot(all(rownames(sample_metadata.to.archr) == rownames(getCellColData(ArchRProject.filt))))
 ArchRProject.filt <- addCellColData(
   ArchRProject.filt,
   data = sample_metadata.to.archr[[opts$group.by]],

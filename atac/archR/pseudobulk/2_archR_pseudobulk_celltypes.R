@@ -1,3 +1,7 @@
+# https://www.ArchRProject.com/bookdown/how-does-archr-make-pseudo-bulk-replicates.html
+
+here::i_am("atac/archR/pseudobulk/2_archR_pseudobulk_celltypes.R")
+
 #####################
 ## Define settings ##
 #####################
@@ -6,10 +10,11 @@ source(here::here("settings.R"))
 source(here::here("utils.R"))
 
 # I/O
-io$outdir <- paste0(io$archR.directory,"/pseudobulk")
+io$outdir <- file.path(io$archR.directory,"pseudobulk")
 
 # Options
 opts$matrices.to.pseudobulk <- "DeviationMatrix_Motif_cisbp_lenient" # c("PeakMatrix","GeneScoreMatrix","GeneScoreMatrix_nodistal")
+opts$group.by <- "celltype.predicted"
 
 ########################
 ## Load cell metadata ##
@@ -43,7 +48,7 @@ se_list <- list()
 for (i in opts$matrices.to.pseudobulk) {
   
   # summarise
-  se_list[[i]] <- getGroupSE(ArchRProject.filt, groupBy = "celltype.mapped", useMatrix = i, divideN = TRUE)
+  se_list[[i]] <- getGroupSE(ArchRProject.filt, groupBy = opts$group.by, useMatrix = i, divideN = TRUE)
   
   # save
   outfile <- sprintf("%s/pseudobulk_%s_normalised_summarized_experiment.rds",io$outdir,i)
