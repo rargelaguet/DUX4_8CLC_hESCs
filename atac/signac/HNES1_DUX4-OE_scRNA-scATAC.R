@@ -50,7 +50,7 @@ DUX4 <- TSSEnrichment(DUX4)
 VlnPlot(object = DUX4,features = c("nCount_RNA", "nCount_ATAC", "TSS.enrichment", "nucleosome_signal"),ncol = 4,pt.size = 0.1)
 
 # filter out low quality cells
-DUX4 <- subset(x = DUX4, subset = nCount_ATAC < 500000 & nCount_RNA < 150000 & nCount_ATAC > 2500 & nCount_RNA > 1000 
+DUX4 <- subset(x = DUX4, subset = nCount_ATAC < 500000 & nCount_RNA < 150000 & nCount_ATAC > 3500 & nCount_RNA > 1000 
                & nucleosome_signal < 2 & TSS.enrichment > 1)
 VlnPlot(object = DUX4,features = c("nCount_RNA", "nCount_ATAC", "TSS.enrichment", "nucleosome_signal"),ncol = 4,pt.size = 0.1)
  
@@ -134,3 +134,27 @@ p6 <- CoveragePlot(object = DUX4,region = "DUXA",features = "DUXA",expression.as
 patchwork::wrap_plots(p1, p2, ncol = 1)
 patchwork::wrap_plots(p3, p4, ncol = 1)
 patchwork::wrap_plots(p5, p6, ncol = 1)
+
+
+DUX4 <- LinkPeaks(object = DUX4,peak.assay = "peaks", expression.assay = "SCT",genes.use = c("MBD3L2"))
+CoveragePlot(object = DUX4,region = "MBD3L2",features = "MBD3L2",expression.assay = "SCT",extend.upstream = 2000, extend.downstream = 10000)
+
+DUX4 <- LinkPeaks(object = DUX4,peak.assay = "peaks", expression.assay = "SCT",genes.use = c("ZNF217"))
+CoveragePlot(object = DUX4,region = "ZNF217",features = "ZNF217",expression.assay = "SCT",extend.upstream = 2000, extend.downstream = 10000)
+
+# finding marker genes 8CLCs
+DefaultAssay(DUX4) <- "SCT"
+DUX4_8CLC.markers_SCT_roc.pos <- FindMarkers(DUX4, ident.1 = "6", test.use="roc", only.pos = TRUE, logfc.threshold = 0.25)
+
+ggplot(DUX4_8CLC.markers_SCT_roc.pos, aes(x=avg_log2FC, y=myAUC, size=myAUC, 
+                                          # col=avg_diff,
+                                          label=row.names(DUX4_8CLC.markers_SCT_roc.pos))) +
+        geom_point(alpha=0.6, color="black") +
+        # theme_minimal() +
+        geom_text_repel(size=3, hjust = 0.2, nudge_x = 0.2) +
+        labs(x="avg_log2FC", y="p_val") +
+        theme(plot.title = element_text(hjust=0.5)) +
+        scale_size(range=c(0.1,8)) +
+        coord_cartesian(xlim=c(0.2,3.5), ylim=c(0.47,1))
+
+
