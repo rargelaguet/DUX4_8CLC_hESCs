@@ -1,0 +1,150 @@
+
+# Load libraries
+
+```{r}
+suppressPackageStartupMessages(library(pheatmap))
+```
+
+# Define settings
+
+Load default settings
+```{r}
+if (grepl("ricard",Sys.info()['nodename'])) {
+  source("/Users/ricard/gastrulation_multiome_10x/settings.R")
+} else if (grepl("ebi",Sys.info()['nodename'])) {
+  source("/homes/ricard/gastrulation_multiome_10x/settings.R")
+} else {
+  stop("Computer not recognised")
+}
+```
+
+Define I/O
+```{r}
+io$archR.diff.dir <- sprintf("%s/results/atac/archR/differential",io$basedir)
+io$outdir <- sprintf("%s/pdf",io$archR.diff.dir)
+```
+
+
+Define options
+```{r}
+opts$celltypes <- c(
+  "Epiblast",
+  "Primitive_Streak",
+  "Caudal_epiblast",
+  # "PGC",
+  "Anterior_Primitive_Streak",
+  "Notochord",
+  "Def._endoderm",
+  "Gut",
+  "Nascent_mesoderm",
+  "Mixed_mesoderm",
+  "Intermediate_mesoderm",
+  "Caudal_Mesoderm",
+  "Paraxial_mesoderm",
+  "Somitic_mesoderm",
+  "Pharyngeal_mesoderm",
+  "Cardiomyocytes",
+  "Allantois",
+  "ExE_mesoderm",
+  "Mesenchyme",
+  "Haematoendothelial_progenitors",
+  "Endothelium",
+  "Blood_progenitors_1",
+  "Blood_progenitors_2",
+  "Erythroid1",
+  "Erythroid2",
+  "Erythroid3",
+  "NMP",
+  "Rostral_neurectoderm",
+  "Caudal_neurectoderm",
+  "Neural_crest",
+  "Forebrain_Midbrain_Hindbrain",
+  "Spinal_cord",
+  "Surface_ectoderm",
+  "Visceral_endoderm",
+  "ExE_endoderm",
+  "ExE_ectoderm",
+  "Parietal_endoderm"
+)
+
+opts$matrix <- "PeakMatrix"
+# opts$min.Log2FC <- 1
+opts$min.MeanDiff <- 0.1
+opts$min.FDR <- 1e-1
+```
+
+# Load data
+
+Load differential accessibility results
+```{r }
+dt <- opts$celltypes %>% map(function(i) { opts$celltypes %>% map(function(j) {
+  file <- sprintf("%s/%s_%s_vs_%s.txt.gz", io$archR.diff.dir,opts$matrix,i,j)
+  if (file.exists(file)) {
+    fread(file, select = c(2,6,7)) %>% 
+      .[,c("celltypeA","celltypeB"):=list(as.factor(i),as.factor(j))] %>%
+      return
+  }
+}) %>% rbindlist }) %>% rbindlist
+```
+
+```{r}
+dt %>%
+  .[,celltypeA:=factor(celltypeA,levels=opts$celltypes)] %>%
+  .[,celltypeB:=factor(celltypeB,levels=opts$celltypes)] %>%
+```
+
+
+Define significant hits
+Note that the problem about filtering by FDR is that this is associated with the cell numbers
+```{r}
+dt[,sig:=abs(MeanDiff)>=opts$min.MeanDiff & FDR<=opts$min.FDR]
+# dt[,sig:=MeanDiff>=opts$min.MeanDiff]
+
+mean(dt$sig)
+dt[,mean(sig),by=c("celltypeA","celltypeB")]
+```
+
+```{r}
+# dt[celltypeA=="Notochord" & celltypeB=="Surface_ectoderm"]
+```
+
+
+# Plot
+
+Filter
+
+```{r}
+# dt <- dt[!(celltypeA%in%c("Erythroid","ExE_endoderm") | celltypeB%in%c("ExE_endoderm","Erythroid"))]
+```
+
+Prepare data
+
+```{r}
+to.plot <- dt %>%
+  .[,.(N=sum(sig,na.rm=T)) ,by=c("celltypeA","celltypeB")] %>%
+  dcast(celltypeA~celltypeB, value.var="N", drop=FALSE) %>%
+  matrix.please 
+
+dim(to.plot)
+```
+
+Fill NAs
+```{r}
+for (i in rownames(to.plot)) {
+  for (j in colnames(to.plot)) {
+    if (is.na(to.plot[i,j])) to.plot[i,j] <- to.plot[j,i] 
+  }
+}
+mean(is.na(to.plot))
+```
+
+
+Plot heatmap
+
+(Q) WHY IS THIS NOT SYMMETRIC??
+```{r}
+pdf(sprintf("%s/heatmap_differential_%s.pdf",io$outdir,opts$matrix), width=8, height=6)
+pheatmap(to.plot, cluster_rows  = F, cluster_cols = F, fontsize = 6)
+dev.off()
+```
+

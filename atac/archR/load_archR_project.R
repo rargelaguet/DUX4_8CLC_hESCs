@@ -40,9 +40,9 @@ if (file.exists(io$archR.projectMetadata)) {
 }
 
 # Load peaks
-# if (file.exists(io$archR.peakSet.granges)) {
-# 	ArchRProject <- addPeakSet(ArchRProject, peakSet = readRDS(io$archR.peakSet.granges), force = TRUE)
-# }
+if (file.exists(io$archR.peakSet.granges)) {
+	ArchRProject <- addPeakSet(ArchRProject, peakSet = readRDS(io$archR.peakSet.granges), force = TRUE)
+}
 
 # Load motif annotations over peaks
 # io$archR.peakAnnotation <- sprintf("%s/Annotations/peakAnnotation.rds",io$archR.directory)

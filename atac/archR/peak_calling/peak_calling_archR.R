@@ -19,12 +19,15 @@ io$outdir <- paste0(io$basedir,"/results/atac/archR/peak_calling")
 # Options
 opts$pvalue.cutoff <- 0.01
 opts$group.by <- "eight_cell_like_ricard"
+opts$ncores <- 2
 
 ########################
 ## Load ArchR project ##
 ########################
 
 source(here::here("atac/archR/load_archR_project.R"))
+
+addArchRThreads(threads = opts$ncores)
 
 ########################
 ## Load cell metadata ##
@@ -65,11 +68,6 @@ stopifnot(opts$group.by %in% names(ArchRProject.filt@projectMetadata$GroupCovera
 # print cell numbers
 table(getCellColData(ArchRProject.filt,"Sample")[[1]])
 table(getCellColData(ArchRProject.filt,opts$group.by)[[1]])
-
-###################
-## Sanity checks ##
-###################
-
 
 ##################
 ## Peak calling ##
@@ -119,5 +117,6 @@ fwrite(to.save, file.path(io$archR.directory,"PeakCalls/peaks_archR_macs2.bed.gz
 ## Add peak matrix ##
 #####################
 
+ArchRProject@peakSet <- ArchRProject.filt@peakSet
 ArchRProject <- addPeakMatrix(ArchRProject, binarize = FALSE)
 saveArchRProject(ArchRProject)

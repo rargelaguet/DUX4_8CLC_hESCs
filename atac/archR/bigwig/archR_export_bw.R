@@ -1,6 +1,6 @@
 # https://www.ArchRProject.com/bookdown/how-does-archr-make-pseudo-bulk-replicates.html
 
-here::i_am("/Users/argelagr/DUX4_hESCs_multiome/atac/archR/bigwig/archR_export_bw.R")
+here::i_am("atac/archR/bigwig/archR_export_bw.R")
 
 #####################
 ## Define settings ##
@@ -24,8 +24,6 @@ sample_metadata <- fread(io$metadata) %>%
   .[pass_atacQC==TRUE & !is.na(eight_cell_like_ricard)] %>%
   .[sample%in%opts$samples]
 
-stopifnot(sample_metadata$cell %in% rownames(ArchRProject))
-
 ########################
 ## Load ArchR project ##
 ########################
@@ -40,6 +38,30 @@ addArchRThreads(threads = opts$ncores)
 
 ArchRProject.filt <- ArchRProject[sample_metadata$cell]
 table(getCellColData(ArchRProject.filt,"Sample")[[1]])
+
+###########################
+## Update ArchR metadata ##
+###########################
+
+sample_metadata.to.archr <- sample_metadata %>% 
+  .[cell%in%rownames(ArchRProject.filt)] %>% setkey(cell) %>% .[rownames(ArchRProject.filt)] %>%
+  as.data.frame() %>% tibble::column_to_rownames("cell")
+
+stopifnot(all(rownames(sample_metadata.to.archr) == rownames(getCellColData(ArchRProject.filt))))
+ArchRProject.filt <- addCellColData(
+  ArchRProject.filt,
+  data = sample_metadata.to.archr[[opts$group.by]],
+  name = opts$group.by,
+  cells = rownames(sample_metadata.to.archr),
+  force = TRUE
+)
+
+stopifnot(opts$group.by %in% names(ArchRProject.filt@projectMetadata$GroupCoverages))
+
+# print cell numbers
+table(getCellColData(ArchRProject.filt,"Sample")[[1]])
+table(getCellColData(ArchRProject.filt,opts$group.by)[[1]])
+
 
 ###################
 ## Export bigwig ##

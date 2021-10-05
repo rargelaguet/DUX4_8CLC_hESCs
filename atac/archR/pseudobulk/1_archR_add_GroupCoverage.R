@@ -14,6 +14,7 @@ io$metadata <- file.path(io$basedir,"/results/rna/dimensionality_reduction/sampl
 
 # Options
 opts$group.by <- "eight_cell_like_ricard"
+opts$ncores <- 2
 
 ########################
 ## Load ArchR project ##
@@ -21,7 +22,7 @@ opts$group.by <- "eight_cell_like_ricard"
 
 source(here::here("atac/archR/load_archR_project.R"))
 
-addArchRThreads(threads = 2)
+addArchRThreads(threads = opts$ncores)
 
 ########################
 ## Load cell metadata ##
