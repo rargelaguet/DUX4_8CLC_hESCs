@@ -82,7 +82,7 @@ sce_filt <- scater::runPCA(sce_filt, ncomponents = 25, ntop=nrow(sce_filt))
 Plot PCA
 ```{r}
 plotPCA(sce_filt, colour_by="sample", ncomponents = c(2,1))
-plotPCA(sce_filt, colour_by="foo", ncomponents = c(1,2))
+# plotPCA(sce_filt, colour_by="foo", ncomponents = c(1,2))
 ```
 
 
@@ -98,7 +98,7 @@ sce_filt <- runUMAP(sce_filt, dimred="PCA", n_neighbors = 30, min_dist = 0.40)
 Plot UMAP
 
 ```{r}
-plotUMAP(sce_filt, colour_by="foo", ncomponents = 1:2)
+# plotUMAP(sce_filt, colour_by="foo", ncomponents = 1:2)
 ```
 
 ```{r}
@@ -153,14 +153,16 @@ sce_filt$foo <- colnames(sce_filt)%in%interesting.cells
 ```
 
 ```{r}
+io$metadata <- file.path(io$basedir,"results/atac/archR/qc/sample_metadata_after_qc.txt.gz")
+
 metadata <- fread(io$metadata)
 metadata[,`eight_cell_like_ricard`:=cell%in%interesting.cells]
 
-interesting.cells.jasmin <- fread("/Users/argelagr/data/DUX4_hESCs_multiome/results/rna/DUX4-OE_seurat-clusters.txt") %>%
-  .[V2==6,V1]
+interesting.cells.jasmin <- fread("/Users/argelagr/data/DUX4_hESCs_multiome/results/rna/DUX4-OE_seurat-clusters.txt") %>% .[V2==6,V1]
 metadata[,`eight_cell_like_jasmin`:=barcode%in%interesting.cells.jasmin]
 table(metadata$eight_cell_like_jasmin)
 table(metadata$eight_cell_like_ricard)
+fwrite(metadata, file.path(io$basedir,"results/rna/dimensionality_reduction/sample_metadata_after_clustering.txt.gz"), sep="\t", quote=F, na="NA")
 ```
 
 

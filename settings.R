@@ -16,15 +16,18 @@ io <- list()
 if (grepl("ricard",Sys.info()['nodename'])) {
   io$basedir <- "/Users/ricard/data/DUX4_hESCs_multiome"
   io$gene_metadata <- "/Users/ricard/data/ensembl/human/v93/bioMart/all_genes/Hsapiens_genes_BioMart.93.txt.gz"
+  io$pathToMacs2 <- "/Users/ricard/anaconda3/envs/base_new/bin/macs2"
 } else if (grepl("BI2404M",Sys.info()['nodename'])) {
     io$basedir <- "/Users/argelagr/data/DUX4_hESCs_multiome"
     io$gene_metadata <- "/Users/argelagr/data/ensembl/human/v93/bioMart/all_genes/Hsapiens_genes_BioMart.93.txt.gz"
+    io$pathToMacs2 <- "/Users/argelagr/opt/anaconda3/envs/main/bin/macs2"
 } else if (grepl("pebble|headstone", Sys.info()['nodename'])) {
   if (grepl("DUX4_hESCs_multiome", Sys.info()['effective_user'])) {
     stop()
   } else if (grepl("argelag", Sys.info()['effective_user'])) {
     io$basedir <-'/bi/group/reik/ricard/data/DUX4_hESCs_multiome'
     io$gene_metadata <- "/bi/group/reik/ricard/data/ensembl/human/v93/bioMart/all_genes/Hsapiens_genes_BioMart.93.txt.gz"
+    io$pathToMacs2 <- "/bi/group/reik/ricard/software/miniconda3/envs/main/bin/macs2"
   }
 } else {
   stop("Computer not recognised")

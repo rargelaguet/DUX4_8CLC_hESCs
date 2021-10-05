@@ -46,7 +46,7 @@ args$outdir <- file.path(io$basedir,"results/atac/archR/dimensionality_reduction
 ## END TEST ##
 
 # I/O
-io$pdfdir <- sprintf("%s/pdf",args$outdir); dir.create(io$pdfdir,showWarnings = F)
+# io$pdfdir <- sprintf("%s/pdf",args$outdir); dir.create(io$pdfdir,showWarnings = F)
 
 # Options
 opts$lsi.iterations = 2

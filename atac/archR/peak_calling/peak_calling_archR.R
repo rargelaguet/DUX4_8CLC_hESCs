@@ -2,46 +2,34 @@
 # Note: this requires the creation of pseudobulk replicates with 'addGroupCoverages'
 # see /.../atac/archR/pseudobulk/archR_pseudobulk_celltypes.R
 
-########################
-## Load ArchR project ##
-########################
-
-if (grepl("ricard",Sys.info()['nodename'])) {
-  source("/Users/ricard/gastrulation_multiome_10x/atac/archR/load_archR_project.R")
-  pathToMacs2 <- "/Users/ricard/anaconda3/envs/base_new/bin/macs2"
-} else if (grepl("ebi",Sys.info()['nodename'])) {
-  source("/homes/ricard/gastrulation_multiome_10x/atac/archR/load_archR_project.R")
-  pathToMacs2 <- "/nfs/research1/stegle/users/ricard/conda-envs/R4/bin/macs2"
-} else {
-  stop("Computer not recognised")
-}
-
 #####################
 ## Define settings ##
 #####################
 
+source(here::here("settings.R"))
+source(here::here("utils.R"))
+
+# I/O
 # io$metadata <- paste0(io$basedir,"/sample_metadata.txt.gz")
 # io$metadata <- paste0(io$basedir,"/results/atac/archR/qc/sample_metadata_after_qc.txt.gz")
 io$outdir <- paste0(io$basedir,"/results/atac/archR/peak_calling")
 
-opts$samples <- c(
-  "E7.5_rep1",
-  "E7.5_rep2",
-  "E8.0_rep1",
-  "E8.0_rep2",
-  "E8.5_rep1",
-  "E8.5_rep2"
-)
-
+# Options
 opts$pvalue.cutoff <- 0.01
-opts$group.by <- "celltype.mapped"
+opts$group.by <- "eight_cell_like_ricard"
+
+########################
+## Load ArchR project ##
+########################
+
+source(here::here("atac/archR/load_archR_project.R"))
 
 ########################
 ## Load cell metadata ##
 ########################
 
 sample_metadata <- fread(io$metadata) %>%
-  .[pass_atacQC==TRUE & !is.na(celltype.mapped)] %>%
+  .[pass_atacQC==TRUE & !is.na(eight_cell_like_ricard)] %>%
   .[sample%in%opts$samples]
 
 stopifnot(sample_metadata$cell %in% rownames(ArchRProject))
@@ -57,7 +45,7 @@ table(getCellColData(ArchRProject.filt,"Sample")[[1]])
 ## Sanity checks ##
 ###################
 
-stopifnot("celltype.mapped" %in% names(ArchRProject.filt@projectMetadata$GroupCoverages))
+stopifnot(opts$group.by %in% names(ArchRProject.filt@projectMetadata$GroupCoverages))
 
 ##################
 ## Peak calling ##
@@ -69,7 +57,7 @@ ArchRProject.filt <- addReproduciblePeakSet(
   groupBy = opts$group.by, 
   peakMethod = "Macs2",
   excludeChr = c("chrM", "chrY"),
-  pathToMacs2 = pathToMacs2,
+  pathToMacs2 = io$pathToMacs2,
   cutOff = opts$pvalue.cutoff,
   extendSummits = 300,
   plot = FALSE,
