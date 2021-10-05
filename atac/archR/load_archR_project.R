@@ -35,9 +35,9 @@ addArchRThreads(threads = 1)
 ArchRProject <- loadArchRProject(io$archR.directory)
 
 # Load ArchR projectMetadata
-# if (file.exists(io$archR.projectMetadata)) {
-# 	ArchRProject@projectMetadata <- readRDS(io$archR.projectMetadata)
-# }
+if (file.exists(io$archR.projectMetadata)) {
+	ArchRProject@projectMetadata <- readRDS(io$archR.projectMetadata)
+}
 
 # Load peaks
 # if (file.exists(io$archR.peakSet.granges)) {

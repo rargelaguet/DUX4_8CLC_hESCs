@@ -42,6 +42,22 @@ io$rna.pseudobulk.sce <- paste0(io$basedir,"/results/rna/pseudobulk/SingleCellEx
 
 # ATAC archR
 io$archR.directory <- paste0(io$basedir,"/processed/atac/archR")
+io$archR.projectMetadata <- file.path(io$archR.directory,"projectMetadata.rds")
+io$archR.peakSet.granges <- file.path(io$archR.directory,"PeakSet.rds")
+io$archR.bgdPeaks <- file.path(io$archR.directory,"Background-Peaks.rds")
+io$archR.peakSet.bed <- file.path(io$archR.directory,"PeakCalls/bed/peaks_archR_macs2.bed.gz")
+io$archR.GeneScoreMatrix.se <- file.path(io$archR.directory,"/GeneScoreMatrix_no_distal_summarized_experiment.rds")
+io$archR.peakMatrix.se <- file.path(io$archR.directory,"PeakCalls/PeakMatrix_summarized_experiment.rds")
+io$archR.peak.variability <- file.path(io$basedir,"results/atac/archR/variability/peak_variability.txt.gz")
+io$archR.peak.differential.dir <- file.path(io$basedir,"results/atac/archR/differential/PeakMatrix")
+io$archR.peak.metadata <- file.path(io$archR.directory,"PeakCalls/peak_metadata.tsv.gz")
+io$archR.peak.stats <- file.path(io$basedir,"results/atac/archR/peak_calling/peak_stats.txt.gz")
+io$archR.peak2gene.all <- file.path(io$basedir,"results/atac/archR/peak_calling/peaks2genes/peaks2genes_all.txt.gz")
+io$archR.peak2gene.nearest <- file.path(io$basedir,"results/atac/archR/peak_calling/peaks2genes/peaks2genes_nearest.txt.gz")
+io$archr.chromvar.dir <- file.path(io$basedir,"results/atac/archR/chromvar")
+io$archR.pseudobulk.GeneScoreMatrix.se <- file.path(io$archR.directory,"pseudobulk/pseudobulk_GeneScoreMatrix_summarized_experiment.rds")
+io$archR.pseudobulk.peakMatrix.se <- file.path(io$archR.directory,"pseudobulk/pseudobulk_PeakMatrix_summarized_experiment.rds")
+io$archR.pseudobulk.deviations.se <- file.path(io$basedir,"results/atac/archR/chromvar/pseudobulk/chromVAR_deviations_Motif_cisbp_lenient_archr_chip.rds")
 
 #############
 ## Options ##
