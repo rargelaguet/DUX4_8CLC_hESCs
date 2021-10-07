@@ -24,11 +24,11 @@ opts$trim.barcode <- FALSE
 opts$sample_cell_separator <- "#"
 
 ## START TEST ##
-args <- list()
-args$inputdir <- file.path(io$basedir,"original/rna")
-args$outputdir <- file.path(io$basedir,"processed/rna")
-args$samples <- opts$samples
-args$test <- FALSE
+# args <- list()
+# args$inputdir <- file.path(io$basedir,"original/rna")
+# args$outputdir <- file.path(io$basedir,"processed/rna")
+# args$samples <- opts$samples
+# args$test <- FALSE
 ## END TEST ##
 
 
@@ -133,11 +133,11 @@ seurat <- CreateSeuratObject(count_mtx, meta.data = cell.info.to.seurat)
 head(seurat@meta.data)
 
 # Add mitochondrial percenatge
-seurat[["mitochondrial_percent_RNA"]] <- PercentageFeatureSet(seurat, pattern = "^MT-")
+seurat[["mitochondrial_percent_RNA"]] <- PercentageFeatureSet(seurat, pattern = "^MT-") %>% round(2)
 
 # Add ribosomal RNA content
 ribo.genes <- grep(pattern = "^RP[L|S]", x = rownames(seurat), value = TRUE)
-seurat[["ribosomal_percent_RNA"]] <- PercentageFeatureSet(seurat, features = ribo.genes)
+seurat[["ribosomal_percent_RNA"]] <- PercentageFeatureSet(seurat, features = ribo.genes) %>% round(2)
 
 #####################
 ## Create metadata ##

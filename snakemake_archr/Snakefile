@@ -1,0 +1,93 @@
+import os
+from re import search
+import getpass
+
+
+############
+## Config ##
+############
+
+host = os.uname()[1]
+if search("BI2404M", host) and getpass.getuser()=="argelagr":
+    configfile: "config_ricard_local.yaml"
+elif search("[headstone|pebble]", host) and getpass.getuser()=="argelagr":
+    configfile: "config_ricard_babraham.yaml"
+elif search("[headstone|pebble]", host) and getpass.getuser()=="stephen":
+    configfile: "config_stephen_babraham.yaml"
+else:
+    print("Computer not recognised")
+    exit()
+
+# validate(config, schema="schemas/config.schema.yaml")
+
+###########
+## Rules ##
+###########
+
+rule all:
+    input:
+        expand(config["directories"]["processed_data"]+"/{sample}.arrow", sample=config["samples"])
+
+########################
+## Create arrow files ##
+########################
+
+rule create_arrow_files:
+    input:
+        script=config["scripts"]["create_arrow_files"],
+        fragments_files=expand(config["directories"]["original_data"]+"{sample}/atac_fragments.tsv.gz".
+            sample=config["samples"])
+    output:
+        config["directories"]["processed_data"]+"/{sample}.arrow"
+    params:
+        outdir = config["directories"]["processed_data"],
+        # sample = expand("{sample}", sample=config["samples"]),
+        sample = config["samples"],
+        genome = config["create_arrow_files"]["genome"],
+        min_fragments = config["create_arrow_files"]["min_fragments"],
+        max_fragments = config["create_arrow_files"]["max_fragments"],
+        min_tss_score = config["create_arrow_files"]["min_tss_score"],
+        threads = config["create_arrow_files"]["threads"],
+        memory = config["slurm"]["create_arrow_files"]["memory"]
+    log: 
+        "logs/create_arrow_files_{sample}.log"
+    shell:
+        "Rscript {input.script}  --samples {params.sample} --fragments_files {input.fragments_files} --genome {params.genome} --min_fragments {params.min_fragments} \
+        --max_fragments {params.max_fragments} --min_tss_score {params.min_tss_score} --threads {params.threads} --outdir {params.outdir} > {log}"
+
+
+##########################
+## Create ArchR project ##
+##########################
+
+rule create_archr_project:
+    input:
+        script=config["scripts"]["create_archr_project"],
+        arrow_files=rules.create_arrow_files.output
+    output:
+        config["directories"]["processed_data"]+"/{sample}.arrow"
+    params:
+        genome = config["create_archr_project"]["genome"],
+        outdir = config["directories"]["processed_data"],
+    log: 
+        "logs/create_archr_project.log"
+    shell:
+        "Rscript {input.script} --arrow_files {input.arrow_files} --genome {params.genome} --outdir {params.outdir} > {log}"
+
+
+###########################
+## Create ArchR metadata ##
+###########################
+
+rule create_archr_metadata:
+    input:
+        metadata=config["files"]["rna_metadata"],
+    output:
+        config["directories"]["processed_data"]+"/sample_metadata_after_archR.txt.gz"
+    params:
+        genome = config["create_archr_project"]["genome"],
+        # outfile = config["directories"]["processed_data"]+"/sample_metadata_after_archR.txt.gz"
+    log: 
+        "logs/create_archr_metadata.log"
+    shell:
+        "Rscript {input.script} --metadata {input.metadata} --outfile {output} > {log}"

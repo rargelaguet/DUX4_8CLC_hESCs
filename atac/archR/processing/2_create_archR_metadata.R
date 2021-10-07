@@ -1,23 +1,37 @@
 
+suppressPackageStartupMessages(library(ArchR))
+suppressPackageStartupMessages(library(argparse))
+
+here::i_am("atac/archR/processing/2_create_archR_metadata.R")
+
+######################
+## Define arguments ##
+######################
+
+p <- ArgumentParser(description='')
+p$add_argument('--metadata',    type="character",    help='metadata file')
+p$add_argument('--outfile',     type="character",    help='Output file')
+
+args <- p$parse_args(commandArgs(TRUE))
+
+## START TEST ##
+# args$metadata <- "/Users/argelagr/data/DUX4_hESCs_multiome/results/rna/doublet_detection/sample_metadata_after_doublets.txt.gz"
+# args$outfile <- "/bi/group/reik/ricard/data/DUX4_hESCs_multiome/processed/atac/archR/sample_metadata_after_archR.txt.gz"
+## END TEST ##
 
 #####################
 ## Define settings ##
 #####################
 
-here::i_am("atac/archR/processing/2_create_archR_metadata.R")
 source(here::here("settings.R"))
-
-# I/O
-io$metadata <- paste0(io$basedir,"/results/rna/doublet_detection/sample_metadata_after_doublets.txt.gz")
-io$metadata.out <- paste0(io$archR.directory,"/sample_metadata_after_archR.txt.gz")
 
 ###################
 ## Load metadata ##
 ###################
 
-sample_metadata <- fread(io$metadata) %>%
+# This metadata file is typically derived from the RNA pipeline
+sample_metadata <- fread(args$metadata) %>%
   .[,c("cell", "sample", "barcode", "nFeature_RNA", "nCount_RNA", "mitochondrial_percent_RNA", "ribosomal_percent_RNA", "pass_rnaQC", "doublet_score", "doublet_call")]
-       # "TSSEnrichment_atac", "ReadsInTSS_atac", "PromoterRatio_atac", "NucleosomeRatio_atac", "nFrags_atac", "BlacklistRatio_atac", "pass_atacQC")
 
 ########################
 ## Load ArchR project ##
@@ -30,14 +44,9 @@ source(here::here("atac/archR/load_archR_project.R"))
 ######################
   
 # fetch archR's metadata
-# note that QC is done later in the QC/qc.R script
 archR_metadata <- getCellColData(ArchRProject) %>%
   as.data.table(keep.rownames = T) %>% setnames("rn","cell") %>%
-  .[,c("cell", "TSSEnrichment", "ReadsInTSS", "PromoterRatio", "NucleosomeRatio", "nFrags",  "BlacklistRatio")]# %>%
-  # setnames("Sample","sample") %>%
-  # .[,cell:=stringr::str_replace_all(cell,"#","_")] %>%
-  # .[,sample:=strsplit(cell,"#") %>% map_chr(1)] %>%
-  # .[,barcode:=strsplit(cell,"#") %>% map_chr(2)]
+  .[,c("cell", "TSSEnrichment", "ReadsInTSS", "PromoterRatio", "NucleosomeRatio", "nFrags",  "BlacklistRatio")]
 
 cols.to.rename <- c("TSSEnrichment","ReadsInTSS","PromoterRatio","NucleosomeRatio","nFrags","BlacklistRatio")
 idx.cols.to.rename <- which(colnames(archR_metadata)%in%cols.to.rename)
@@ -47,29 +56,29 @@ colnames(archR_metadata)[idx.cols.to.rename] <- paste0(colnames(archR_metadata)[
 ## Merge ##
 ###########
 
-sample_metadata_all <- sample_metadata %>% 
+sample_metadata_tosave <- sample_metadata %>% 
   merge(archR_metadata,by="cell", all=TRUE) 
 
 # Fill missing entries
-sample_metadata_all %>%
+sample_metadata_tosave %>%
   .[is.na(sample),sample:=strsplit(cell,"#") %>% map_chr(1)] %>%
   .[is.na(barcode),barcode:=strsplit(cell,"#") %>% map_chr(2)]
 
 # round
-sample_metadata_all[,c("TSSEnrichment_atac","NucleosomeRatio_atac","PromoterRatio_atac","BlacklistRatio_atac"):=list(round(TSSEnrichment_atac,2),round(NucleosomeRatio_atac,2),round(PromoterRatio_atac,2),round(BlacklistRatio_atac,2))]
-sample_metadata_all[,c("ribosomal_percent_RNA","mitochondrial_percent_RNA"):=list(round(ribosomal_percent_RNA,2),round(mitochondrial_percent_RNA,2))]
+sample_metadata_tosave[,c("TSSEnrichment_atac","NucleosomeRatio_atac","PromoterRatio_atac","BlacklistRatio_atac"):=list(round(TSSEnrichment_atac,2),round(NucleosomeRatio_atac,2),round(PromoterRatio_atac,2),round(BlacklistRatio_atac,2))]
+sample_metadata_tosave[,c("ribosomal_percent_RNA","mitochondrial_percent_RNA"):=list(round(ribosomal_percent_RNA,2),round(mitochondrial_percent_RNA,2))]
 
 # sanity checks
 table(sample_metadata$sample)
-stopifnot(all(!is.na(sample_metadata_all$sample)))
-stopifnot(all(!is.na(sample_metadata_all$barcode)))
+stopifnot(all(!is.na(sample_metadata_tosave$sample)))
+stopifnot(all(!is.na(sample_metadata_tosave$barcode)))
 
 
 #############################
 ## Update ArchR's metadata ##
 #############################
 
-metadata.to.archR <- sample_metadata_all %>% 
+metadata.to.archR <- sample_metadata_tosave %>% 
   .[cell%in%rownames(ArchRProject)] %>% setkey(cell) %>% .[rownames(ArchRProject)] %>%
   as.data.frame() %>% tibble::column_to_rownames("cell")
 
@@ -91,6 +100,6 @@ head(getCellColData(ArchRProject))
 ## Save ##
 ##########
 
-fwrite(sample_metadata_all, io$metadata.out, sep="\t", na="NA", quote=F)
+fwrite(sample_metadata_tosave, args$outfile, sep="\t", na="NA", quote=F)
 
 saveArchRProject(ArchRProject)

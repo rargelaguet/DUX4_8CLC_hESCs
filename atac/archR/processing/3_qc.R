@@ -1,28 +1,35 @@
-########################
-## Load ArchR project ##
-########################
+
+suppressPackageStartupMessages(library(ArchR))
+suppressPackageStartupMessages(library(argparse))
 
 here::i_am("atac/archR/processing/3_qc.R")
-source(here::here("settings.R"))
+
+######################
+## Define arguments ##
+######################
+
+p <- ArgumentParser(description='')
+p$add_argument('--metadata',    type="character",    help='metadata file')
+p$add_argument('--outdir',     type="character",    help='Output directory')
+p$add_argument('--min.TSSEnrichment',     type="integer",    default=8,   help='Minimum TSS enrichment')
+p$add_argument('--min.log_nFrags',     type="integer",    default=3000,    help='Maximum number of ATAC fragments')
+p$add_argument('--max.BlacklistRatio',     type="double",    default=0.05,    help='Maximum Blacklist Ratio')
+p$add_argument('--threads',     type="integer",    default=1,    help='Number of threads')
+
+args <- p$parse_args(commandArgs(TRUE))
+
+## START TEST ##
+# args$metadata <- "/Users/argelagr/data/DUX4_hESCs_multiome/processed/atac/archR/sample_metadata_after_archR.txt.gz"
+# args$outfile <- "/bi/group/reik/ricard/data/DUX4_hESCs_multiome/results/atac/archR/qc"
+## END TEST ##
 
 #####################
 ## Define settings ##
 #####################
 
-# I/O
-io$metadata <- file.path(io$basedir,"processed/atac/archR/sample_metadata_after_archR.txt.gz")
-io$outdir <- file.path(io$basedir,"results/atac/archR/qc")
+source(here::here("settings.R"))
 
 # Options
-opts$samples <- c(
-  "HNES1_DUX4_overexpression_L001",
-  "HNES1_wildtype_L001"
-)
-
-# QC thresholds
-opts$min.TSSEnrichment <- 8
-opts$min.log_nFrags <- 11.5
-opts$max.BlacklistRatio <- 0.05
 opts$chr <- paste0("chr",1:3)
 opts$test <- FALSE
 
@@ -31,7 +38,7 @@ opts$test <- FALSE
 ## Load cell metadata ##
 ########################
 
-sample_metadata <- fread(io$metadata)
+sample_metadata <- fread(args$metadata)
 
 ########################
 ## Load ArchR project ##
@@ -39,16 +46,13 @@ sample_metadata <- fread(io$metadata)
 
 source(here::here("atac/archR/load_archR_project.R"))
 
-addArchRThreads(threads = 4) 
-
-# Subset
-# ArchRProject <- ArchRProject[sample_metadata[pass_atacQC==TRUE,cell]
+addArchRThreads(threads=args$threads) 
 
 ##################
 ## Subset ArchR ##
 ##################
 
-if (opts$test) {
+if (args$test) {
   cells.to.use <- split(ArchRProject$cellNames,ArchRProject$sample) %>% map(~ head(.,n=100)) %>% unlist
   ArchRProject <- ArchRProject[cells.to.use,]
 }
@@ -71,9 +75,9 @@ to.plot.tss <- opts$samples %>% map(function(i) {
 }) %>% rbindlist %>% 
   setnames("group","sample") %>% 
   melt(id.vars=c("sample","x"))
-fwrite(to.plot.tss, sprintf("%s/qc_TSSenrichment.txt.gz",io$outdir))
+fwrite(to.plot.tss, sprintf("%s/qc_TSSenrichment.txt.gz",args$outdir))
 
-to.plot.tss <- fread(sprintf("%s/qc_TSSenrichment.txt.gz",io$outdir)) %>% 
+to.plot.tss <- fread(sprintf("%s/qc_TSSenrichment.txt.gz",args$outdir)) %>% 
   .[,.(value=mean(value)), by = c("sample","x","variable")]
 
 p <- ggline(to.plot.tss[variable=="normValue"], x="x", y="value", plot_type="l") +
@@ -90,7 +94,7 @@ p <- ggline(to.plot.tss[variable=="normValue"], x="x", y="value", plot_type="l")
     legend.title = element_blank()
   )
 
-pdf(sprintf("%s/qc_TSSenrichment.pdf",io$outdir), width=8, height=4)
+pdf(sprintf("%s/qc_TSSenrichment.pdf",args$outdir), width=8, height=4)
 print(p)
 dev.off()
 
@@ -109,11 +113,11 @@ to.plot.fragmentsize <- opts$samples %>% map(function(i) {
 }) %>% rbindlist %>% 
   setnames("group","sample")
 
-fwrite(to.plot.fragmentsize, sprintf("%s/qc_FragmentSizeDistribution.txt.gz",io$outdir))
+fwrite(to.plot.fragmentsize, sprintf("%s/qc_FragmentSizeDistribution.txt.gz",args$outdir))
 
 # to.plot <- to.plot.fragmentsize %>% .[variable=="fragmentPercent"] %>% .[,fragmentSize:=1:.N,by="sample"] %>% setnames("value","fragmentPercent") %>% .[,variable:=NULL]
 
-to.plot.fragmentsize <- fread(sprintf("%s/qc_FragmentSizeDistribution.txt.gz",io$outdir)) %>% 
+to.plot.fragmentsize <- fread(sprintf("%s/qc_FragmentSizeDistribution.txt.gz",args$outdir)) %>% 
   .[,.(fragmentPercent=mean(fragmentPercent)), by = c("sample","fragmentSize")]
 
 # to.plot.fragmentsize2 <- to.plot.fragmentsize %>% dcast(sample~variable, value.var="value")
@@ -129,7 +133,7 @@ p <- ggline(to.plot.fragmentsize, x="fragmentSize", y="fragmentPercent", plot_ty
     legend.title = element_blank()
   )
 
-pdf(sprintf("%s/qc_FragmentSizeDistribution.pdf",io$outdir), width=8, height=4)
+pdf(sprintf("%s/qc_FragmentSizeDistribution.pdf",args$outdir), width=8, height=4)
 print(p)
 dev.off()
 
@@ -145,11 +149,11 @@ to.plot <- sample_metadata %>%
 
 # tmp <- data.table(
 #   variable = c("TSSEnrichment_atac", "log_nFrags", "BlacklistRatio_atac"),
-#   value = c(opts$min.TSSEnrichment, opts$min.log_nFrags, opts$max.BlacklistRatio)
+#   value = c(args$min.TSSEnrichment, args$min.log_nFrags, args$max.BlacklistRatio)
 # )
 tmp <- data.table(
   variable = c("TSSEnrichment_atac", "log_nFrags"),
-  value = c(opts$min.TSSEnrichment, opts$min.log_nFrags)
+  value = c(args$min.TSSEnrichment, args$min.log_nFrags)
 )
 # p <- gghistogram(to.plot, x="value", fill="sample", bins=50) +
 p <- gghistogram(to.plot, x="value", y="..density..", bins=70, fill="sample") +
@@ -161,11 +165,9 @@ p <- gghistogram(to.plot, x="value", y="..density..", bins=70, fill="sample") +
     legend.position = "right",
     legend.text = element_text(size=rel(0.5))
   )
-pdf(sprintf("%s/qc_metrics_histogram.pdf",io$outdir), width=8, height=5)
+pdf(sprintf("%s/qc_metrics_histogram.pdf",args$outdir), width=8, height=5)
 print(p)
 dev.off()
-
-
 
 
 #############
@@ -173,15 +175,14 @@ dev.off()
 #############
 
 sample_metadata %>%
-  .[,pass_atacQC:=TSSEnrichment_atac>=opts$min.TSSEnrichment & log2(nFrags_atac)>=opts$min.log_nFrags & BlacklistRatio_atac<=opts$max.BlacklistRatio] %>%
+  .[,pass_atacQC:=TSSEnrichment_atac>=args$min.TSSEnrichment & log2(nFrags_atac)>=args$min.log_nFrags & BlacklistRatio_atac<=args$max.BlacklistRatio] %>%
   .[is.na(pass_atacQC),pass_atacQC:=FALSE]
 
 print(sample_metadata[,mean(pass_atacQC,na.rm=T),by="sample"])
 # print(sample_metadata[,mean(is.na(nFrags_atac)),by="sample"])
 
 # Save
-outfile <- paste0(io$outdir,"/sample_metadata_after_qc.txt.gz")
-fwrite(sample_metadata, outfile, quote=F, na="NA", sep="\t")
+fwrite(sample_metadata, paste0(args$outdir,"/sample_metadata_after_qc.txt.gz"), quote=F, na="NA", sep="\t")
 
 
 ###########################################
@@ -200,8 +201,8 @@ p <- ggbarplot(to.plot, x="sample", y="V1", fill="gray70") +
         axis.text.x = element_text(colour="black",size=rel(0.65), angle=20, hjust=1, vjust=1),  
     )
 
-# pdf(sprintf("%s/qc_metrics_barplot.pdf",io$outdir), width=9, height=7)
-pdf(sprintf("%s/qc_metrics_barplot.pdf",io$outdir))
+# pdf(sprintf("%s/qc_metrics_barplot.pdf",args$outdir), width=9, height=7)
+pdf(sprintf("%s/qc_metrics_barplot.pdf",args$outdir))
 print(p)
 dev.off()
 
@@ -225,6 +226,6 @@ dev.off()
 #     axis.text.y = element_text(colour="black",size=rel(0.75)),  
 #     axis.title.x = element_blank()
 #   )
-# pdf(sprintf("%s/qc_metrics_boxplot.pdf",io$outdir), width=10, height=6)
+# pdf(sprintf("%s/qc_metrics_boxplot.pdf",args$outdir), width=10, height=6)
 # print(p)
 # dev.off()

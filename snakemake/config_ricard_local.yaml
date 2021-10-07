@@ -23,19 +23,51 @@ scripts:
     seurat_to_sce: ../rna/processing/3_seurat_to_SCE.R
     doublet_detection: ../rna/processing/4_doublet_detection.R
     parse_doublets: ../rna/processing/5_parse_sample_metadata_after_doublets.R
+    clustering_seurat: ../rna/clustering/seurat_clustering.R
+    pseudobulk_rna: ../rna/pseudobulk/pseudobulk_rna.R
     dimensionality_reduction: ../rna/dimensionality_reduction/automated/dimensionality_reduction_sce.R
-
 
 ################
 ## Parameters ##
 ################
 
+pseudobulk_rna:
+    group_by: ["cluster", "sample"]
+    normalisation_method: "log"
+
 doublet_detection:
     doublet_score_threshold: 1.25
+
+clustering_seurat:
+    npcs: 15
+    nfeatures: 1500
+    n_neighbors: 25
+    knn: 15
+    min_dist: 0.3
+    clustering_resolution: 0.5
 
 dimensionality_reduction:
     npcs: 30
     features: 1000
     n_neighbors: 25
     min_dist: 0.3
-    colour_by: ["sample", "doublet_score", "doublet_call"]
+    # colour_by: ["sample", "doublet_score", "doublet_call"]
+    colour_by: ["cluster"]
+
+slurm:  # memory in GB
+    create_seurat: 
+        memory: 10
+    qc: 
+        memory: 2
+    seurat_to_sce:
+        memory: 12
+    doublet_detection:
+        memory: 6
+    parse_doublet_results:
+        memory: 2
+    clustering_seurat:
+        memory: 10
+    dimensionality_reduction:
+        memory: 10
+    pseudobulk_rna:
+        memory: 10

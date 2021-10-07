@@ -1,4 +1,28 @@
 suppressPackageStartupMessages(library(ArchR))
+suppressPackageStartupMessages(library(argparse))
+
+here::i_am("atac/archR/processing/1_create_archR_project.R")
+
+######################
+## Define arguments ##
+######################
+
+p <- ArgumentParser(description='')
+p$add_argument('--arrow_files',           type="character",  nargs='+',      help='Arrow files')
+p$add_argument('--genome',           type="character", default="hg38",      help='Genome')
+p$add_argument('--outdir',          type="character",                               help='Output directory')
+
+args <- p$parse_args(commandArgs(TRUE))
+
+## START TEST ##
+# args$arrow_files <- c(
+#   "/bi/group/reik/ricard/data/DUX4_hESCs_multiome/processed/atac/archR/HNES1_DUX4_overexpression_L001.arrow",
+#   "/bi/group/reik/ricard/data/DUX4_hESCs_multiome/processed/atac/archR/HNES1_wildtype_L001.arrow"
+# )
+# args$genome <- "hg38"
+# args$threads <- 1
+# args$outdir <- "/bi/group/reik/ricard/data/DUX4_hESCs_multiome/processed/atac/archR"
+## END TEST ##
 
 #####################
 ## Define settings ##
@@ -7,27 +31,16 @@ suppressPackageStartupMessages(library(ArchR))
 here::i_am("atac/archR/processing/1_create_archR_project.R")
 source(here::here("settings.R"))
 
-# Options
-
-# I/O
-io$output.directory <- file.path(io$basedir,"processed/atac/archR")
-
-io$arrowFiles <- c(
-  "HNES1_wildtype_L001" = file.path(io$basedir,"processed/atac/archR/ArrowFiles/HNES1_wildtype_L001.arrow"),
-  "HNES1_DUX4_overexpression_L001" = file.path(io$basedir,"processed/atac/archR/ArrowFiles/HNES1_DUX4_overexpression_L001.arrow")
-)
-
 # ArchR options
-addArchRThreads(threads = 1) 
-addArchRGenome("hg38")
+addArchRGenome(args$genome)
 
 ############################
 ## create an ArchRProject ##
 ############################
 
 ArchRProject <- ArchRProject(
-  ArrowFiles = io$arrowFiles, 
-  outputDirectory = io$output.directory,
+  ArrowFiles = args$arrowFiles, 
+  outputDirectory = args$outdir,
   copyArrows = FALSE
 )
 
@@ -36,4 +49,3 @@ ArchRProject <- ArchRProject(
 ##########
 
 saveArchRProject(ArchRProject)
-# saveArchRProject(ArchRProject, io$output.directory)

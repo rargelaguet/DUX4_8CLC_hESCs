@@ -1,0 +1,61 @@
+samples:
+  - HNES1_DUX4_overexpression_L001
+  - HNES1_wildtype_L001
+
+
+#################
+## Directories ##
+#################
+
+directories:
+    base: /Users/argelagr/data/DUX4_hESCs_multiome
+    original_data: /Users/argelagr/data/DUX4_hESCs_multiome/original
+    processed_data: /Users/argelagr/data/DUX4_hESCs_multiome/processed/atac/archR/test
+    results: /Users/argelagr/data/DUX4_hESCs_multiome/results/atac/archR/test
+
+files:
+    rna_metadata: /Users/argelagr/data/DUX4_hESCs_multiome/results/rna/clustering/sample_metadata_after_clustering.txt.gz
+
+#############
+## Scripts ##
+#############
+
+scripts:
+    create_arrow_files: ../atac/archR/processing/0_create_arrow_files.R
+    create_archr_project: ../atac/archR/processing/1_create_archR_project.R
+    create_metadata: ../atac/archR/processing/2_create_archR_metadata.R
+    qc: ../atac/archR/processing/3_qc.R
+    add_gene_scores: ../atac/archR/gene_scores/add_GeneScore_matrices.R
+    pseudobulk_add_group_coverage: ../atac/archR/pseudobulk/1_archR_add_GroupCoverage.R
+    pseudobulk: ../atac/archR/pseudobulk/2_archR_pseudobulk_celltypes.R
+    dimensionality_reduction: ../atac/archR/dimensionality_reduction/automated/archR_dimensionality_reduction.R
+
+################
+## Parameters ##
+################
+
+create_arrow_files:
+    genome: "hg38"
+    min_fragments: 1000
+    max_fragments: 1000000
+    min_tss_score: 2.5
+    threads: 2
+
+create_archr_project:
+    genome: "hg38"
+
+qc:
+    min_tss_enrichment: 8
+    min_number_fragments: 3000
+    max_blacklist_ratio: 0.05
+    threads: 2
+
+slurm:  # memory in GB
+    create_arrow_files: 
+        memory: 10
+    create_archr_project:
+        memory: 10
+    create_archr_metadata:
+        memory: 10
+    qc: 
+        memory: 10

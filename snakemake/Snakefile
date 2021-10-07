@@ -26,28 +26,27 @@ else:
 ## Rules ##
 ###########
 
-# rule all:
-#     input:
-#         config["directories"]["results"]+"/rna/mapping/sample_metadata_after_mapping.txt.gz"
-        # expand("%s/rna/mapping/mapping_mnn_{sample}.txt.gz" % config["directories"]["results"], sample=config["samples"]),
-        # expand("%s/rna/mapping/mapping_seurat_{sample}.txt.gz" % config["directories"]["results"], sample=config["samples"])
-
 rule all:
-    input: 
+    input:
+        # config["directories"]["results"]+"/rna/mapping/sample_metadata_after_mapping.txt.gz"
+        expand("%s/rna/pseudobulk/SingleCellExperiment_pseudobulk_{group_by}.rds" % config["directories"]["results"], 
+            group_by=config["pseudobulk_rna"]["group_by"]),
+        expand("%s/rna/pseudobulk/Seurat_pseudobulk_{group_by}.rds" % config["directories"]["results"], 
+            group_by=config["pseudobulk_rna"]["group_by"])
+# rule all:
+#     input: 
         # expand(config["directories"]["results"]+"/rna/doublet_detection/doublets_{sample}_{doublet_score_threshold}.txt.gz", 
         #     sample = config["samples"], 
         #     doublet_score_threshold = config["doublet_detection"]["doublet_score_threshold"]
         # )
         # config["directories"]["results"]+"/rna/doublet_detection/sample_metadata_after_doublets.txt.gz"
-        expand("%s/rna/dimensionality_reduction/umap_features{features}_pcs{npcs}_neigh{n_neighbors}_dist{min_dist}-{colour_by}.pdf" % (config["directories"]["results"]), 
-            # sample = config["samples"], 
-            features = config["dimensionality_reduction"]["features"], 
-            npcs = config["dimensionality_reduction"]["npcs"], 
-            n_neighbors = config["dimensionality_reduction"]["n_neighbors"], 
-            min_dist = config["dimensionality_reduction"]["min_dist"], 
-            colour_by = config["dimensionality_reduction"]["colour_by"]
-            )
-
+        # expand("%s/rna/dimensionality_reduction/umap_features{features}_pcs{npcs}_neigh{n_neighbors}_dist{min_dist}-{colour_by}.pdf" % (config["directories"]["results"]), 
+        #     features = config["dimensionality_reduction"]["features"], 
+        #     npcs = config["dimensionality_reduction"]["npcs"], 
+        #     n_neighbors = config["dimensionality_reduction"]["n_neighbors"], 
+        #     min_dist = config["dimensionality_reduction"]["min_dist"], 
+        #     colour_by = config["dimensionality_reduction"]["colour_by"]
+        #     )
 
 ##################################################
 ## Load count matrices and create Seurat object ##
@@ -128,7 +127,7 @@ rule seurat_to_sce:
 
 rule doublet_detection:
     input:
-        sce=config["directories"]["processed_data"]+"/SingleCellExperiment.rds",
+        sce=rules.seurat_to_sce.output.sce,
         metadata=rules.qc.output.metadata,
         script=config["scripts"]["doublet_detection"]
     output:
@@ -150,7 +149,7 @@ rule parse_doublet_results:
         doublet_files=expand(config["directories"]["results"]+"/rna/doublet_detection/doublets_{sample}_{doublet_score_threshold}.txt.gz", 
             sample=config["samples"], doublet_score_threshold=config["doublet_detection"]["doublet_score_threshold"]),
     output:
-        config["directories"]["results"]+"/rna/doublet_detection/sample_metadata_after_doublets.txt.gz"
+        metadata=config["directories"]["results"]+"/rna/doublet_detection/sample_metadata_after_doublets.txt.gz"
     params:
         memory=config["slurm"]["parse_doublet_results"]["memory"]
     conda:
@@ -160,17 +159,76 @@ rule parse_doublet_results:
     shell:
         "Rscript {input.script} --metadata {input.metadata} --doublet_files {input.doublet_files} --outfile {output} > {log}"
 
+################
+## Clustering ##
+################
+
+rule clustering_seurat:
+    input:
+        metadata=rules.parse_doublet_results.output,
+        seurat=rules.create_seurat.output.seurat,
+        script=config["scripts"]["clustering_seurat"]
+    output:
+        config["directories"]["results"]+"/rna/clustering/umap_by_cluster.pdf",
+        config["directories"]["results"]+"/rna/clustering/umap_by_ZGAgenes.pdf",
+        metadata=config["directories"]["results"]+"/rna/clustering/sample_metadata_after_clustering.txt.gz"
+    params:
+        npcs=config["clustering_seurat"]["npcs"],
+        nfeatures=config["clustering_seurat"]["nfeatures"],
+        n_neighbors=config["clustering_seurat"]["n_neighbors"],
+        knn=config["clustering_seurat"]["knn"],
+        min_dist=config["clustering_seurat"]["min_dist"],
+        clustering_resolution=config["clustering_seurat"]["clustering_resolution"],
+        outdir=config["directories"]["results"]+"/rna/clustering",
+        memory=config["slurm"]["clustering_seurat"]["memory"]
+    conda:
+        "environment.yaml"
+    log: 
+        "logs/clustering_seurat.log"
+    shell:
+        "Rscript {input.script} --metadata {input.metadata} --seurat {input.seurat} --outdir {params.outdir} --nfeatures {params.nfeatures} --npcs {params.npcs} --knn {params.knn} --clustering_resolution {params.clustering_resolution} --n_neighbors {params.n_neighbors} --min_dist {params.min_dist} > {log}"
+
+
+################
+## Pseudobulk ##
+################
+
+rule pseudobulk_rna:
+    input:
+        seurat=rules.create_seurat.output.seurat,
+        # seurat=config["directories"]["processed_data"]+"/Seurat.rds",
+        sce=rules.seurat_to_sce.output,
+        # sce=config["directories"]["processed_data"]+"/SingleCellExperiment.rds",
+        metadata=rules.clustering_seurat.output.metadata,
+        script=config["scripts"]["pseudobulk_rna"],
+    output:
+        seurat=config["directories"]["results"]+"/rna/pseudobulk/Seurat_pseudobulk_{group_by}.rds",
+        sce=config["directories"]["results"]+"/rna/pseudobulk/SingleCellExperiment_pseudobulk_{group_by}.rds",
+    params:
+        normalisation_method=config["pseudobulk_rna"]["normalisation_method"],
+        memory=config["slurm"]["pseudobulk_rna"]["memory"],
+        outdir=config["directories"]["results"]+"/rna/pseudobulk"
+        # group_by=config["pseudobulk"]["group_by"]
+    conda:
+        "environment.yaml"
+    log: 
+        "logs/pseudobulk_rna_{group_by}.log"
+    shell:
+        "Rscript {input.script} --seurat {input.seurat} --sce {input.sce} --metadata {input.metadata} --group_by {wildcards.group_by} --normalisation_method {params.normalisation_method} --outdir {params.outdir} > {log}"
 
 ##############################
 ## Dimensionality reduction ##
 ##############################
 
-# TO-DO: NO NEED TO RECOMPUTE THE UMAP FOR EACH OF THE COLOUR_BY ATTRIBUTES
+# TO-DO: NO NEED TO RECOMPUTE THE UMAP FOR EACH OF THE COLOUR_BY ATTRIBUTES -> JUST DECLARE THE .TXT.GZ  AS OUTPUT FILE??
+# TO-DO: SEURAT
+
 rule dimensionality_reduction: 
     input:
         script=config["scripts"]["dimensionality_reduction"],
         sce=config["directories"]["processed_data"]+"/SingleCellExperiment.rds",
-        metadata=rules.parse_doublet_results.output
+        metadata=rules.clustering_seurat.output.metadata
+        # metadata=rules.parse_doublet_results.output.metadata
     output:
         config["directories"]["results"]+"/rna/dimensionality_reduction/umap_features{features}_pcs{npcs}_neigh{n_neighbors}_dist{min_dist}-{colour_by}.pdf"
     conda:
@@ -200,6 +258,4 @@ rule dimensionality_reduction:
 #     shell:
 #         "Rscript {input.script} --outdir {input.outdir} --sce {input.sce} --samples {params.sample} --threshold.ratioY {params.threshold_ratioY}"
 
-
-# (TO-DO) rule pseudobulk_rna:
 

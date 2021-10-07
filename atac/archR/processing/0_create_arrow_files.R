@@ -1,58 +1,65 @@
 suppressPackageStartupMessages(library(ArchR))
+suppressPackageStartupMessages(library(argparse))
+
+here::i_am("atac/archR/processing/0_create_arrow_files.R")
+
+######################
+## Define arguments ##
+######################
+
+p <- ArgumentParser(description='')
+p$add_argument('--samples',           type="character",  nargs='+',      help='Samples')
+p$add_argument('--fragments_files',           type="character",  nargs='+',      help='ATAC Fragments files')
+p$add_argument('--genome',           type="character", default="hg38",      help='Genome')
+p$add_argument('--min_fragments',     type="integer",    default=1000,   help='Minimum number of ATAC fragments')
+p$add_argument('--max_fragments',     type="integer",    default=1e7,    help='Maximum number of ATAC fragments')
+p$add_argument('--min_tss_score',   type="double",     default=2.5,    help='Minimum TSS score threshold')
+p$add_argument('--threads',     type="integer",    default=1,    help='Number of threads')
+p$add_argument('--outdir',          type="character",                               help='Output directory')
+
+args <- p$parse_args(commandArgs(TRUE))
+
+## START TEST ##
+# args$fragments_files <- c(
+#   "/bi/group/reik/ricard/data/DUX4_hESCs_multiome/original/HNES1_wildtype_L001/atac_fragments.tsv.gz",
+#   "/bi/group/reik/ricard/data/DUX4_hESCs_multiome/original/HNES1_DUX4_overexpression_L001/atac_fragments.tsv.gz"
+# )
+# args$samples <- c("HNES1_wildtype_L001","HNES1_DUX4_overexpression_L001")
+# args$genome <- "hg38"
+# args$min_fragments <- 1000
+# args$max_fragments <- 1e7
+# args$min_tss_score <- 2.5
+# args$threads <- 1
+# args$outdir <- "/bi/group/reik/ricard/data/DUX4_hESCs_multiome/processed/atac/archR/test"
+## END TEST ##
 
 #####################
 ## Define settings ##
 #####################
 
-here::i_am("atac/archR/processing/0_create_arrow_files.R")
 source(here::here("settings.R"))
-
-# Options
-opts$samples <- c(
-  "HNES1_DUX4_overexpression_L001",
-  "HNES1_wildtype_L001"
-)
-
-# I/O
-io$output.directory <- file.path(io$basedir,"processed/atac/archR")
-setwd(io$output.directory)
-
-io$fragment_files <- opts$samples %>% 
-  map_chr(~ sprintf("%s/original/%s/atac_fragments.tsv.gz",io$basedir,.)) %>%
-  set_names(opts$samples)
-
-# Options
-opts$min.fragments <- 1000
-opts$filterTSS.score <- 2.5
-opts$max.fragments <- 1e7
+setwd(args$outdir)
 
 
 # ArchR options
-addArchRThreads(threads = 2) 
-addArchRGenome("hg38")
+addArchRThreads(threads=args$threads) 
+addArchRGenome(args$genome)
 
 
 ########################
 ## create Arrow Files ##
 ########################
 
-# Steps:
-# (1) Read accessible fragments from the provided input files.
-# (2) Calculate quality control information for each cell (i.e. TSS enrichment scores and nucleosome info).
-# (3) Filter cells based on quality control parameters.
-# (4) Create a genome-wide TileMatrix using 500-bp bins.
-# (5) Create a GeneScoreMatrix using the custom geneAnnotation that was defined when we called addArchRGenome().
-
 ArrowFiles <- createArrowFiles(
-  inputFiles = io$fragment_files,
-  sampleNames = names(io$fragment_files),
-  outputNames = names(io$fragment_files),
+  inputFiles = args$fragments_files,
+  sampleNames = args$samples,
+  outputNames = args$samples,
   addTileMat = FALSE,
   addGeneScoreMat = FALSE,
   excludeChr = c("chrM", "chrY"),
 
   # QC metrics
-  minFrags = opts$min.fragments,  # The minimum number of fragments per cell
-  maxFrags = opts$max.fragments,  # The maximum number of fragments per cell
-  minTSS = opts$filterTSS.score   # The minimum TSS enrichment score per cell
+  minFrags = args$min_fragments,  # The minimum number of fragments per cell
+  maxFrags = args$max_fragments,  # The maximum number of fragments per cell
+  minTSS = args$min_tss_score   # The minimum TSS enrichment score per cell
 )

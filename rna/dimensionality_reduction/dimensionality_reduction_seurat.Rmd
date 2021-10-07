@@ -206,7 +206,8 @@ DimPlot(seurat, label = FALSE, reduction = 'umap', pt.size = 1) + NoLegend() + N
 tmp <- seurat@meta.data[,c("SCT_snn_res.0.5"),drop=F] %>% as.data.table(keep.rownames = T) %>%
   setnames(c("cell","cluster"))
 
-sample_metadata.to_save <- fread(io$metadata) %>% merge(tmp,by="cell")
+sample_metadata.to_save <- fread(io$metadata) %>% merge(tmp,by="cell", all.x=T)
+mean(is.na(sample_metadata.to_save$cluster))
 table(sample_metadata$sample)
 ```
 
