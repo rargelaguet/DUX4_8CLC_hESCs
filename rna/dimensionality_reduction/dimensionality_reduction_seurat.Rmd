@@ -1,0 +1,212 @@
+---
+title: "Dimensionality reduction using Seurat"
+---
+  
+```{r load_modules, echo=FALSE, include=FALSE}
+library(Seurat)
+```
+
+# Define settings
+
+```{r}
+here::i_am("rna/dimensionality_reduction/dimensionality_reduction_Seurat.Rmd")
+source(here::here("settings.R"))
+source(here::here("utils.R"))
+```
+
+Define I/O
+```{r define_io, echo=FALSE}
+io$outdir <- paste0(io$basedir,"/results/rna/dimensionality_reduction/seurat")
+```
+
+Define options
+```{r}
+```
+
+
+Load sample metadata
+```{r load_metadata, echo=FALSE}
+sample_metadata <- fread(io$metadata) %>%
+  .[pass_rnaQC==TRUE & sample%in%opts$samples]
+table(sample_metadata$sample)
+```
+
+# Load data
+
+Load RNA expression data as Seurat object
+```{r load_data, echo=FALSE}
+seurat <- load_Seurat(
+  file = io$rna.seurat, 
+  cells = sample_metadata$cell,
+  normalise = TRUE, scale = FALSE, 
+  remove_non_expressed_genes = TRUE
+)
+dim(seurat)
+```
+
+
+Add metadata to the Seurat object
+```{r}
+foo <- sample_metadata %>% as.data.frame %>% tibble::column_to_rownames("cell") %>%
+  .[colnames(seurat),]
+stopifnot(colnames(seurat) == rownames(foo))
+seurat@meta.data <- foo
+```
+
+# Filter features
+
+```{r}
+seurat <- seurat[grep("^Rik|Rik$|^mt-|^Rps-|^Gm",rownames(seurat),invert=T)]
+```
+
+# Select HVG
+
+```{r}
+seurat <- FindVariableFeatures(seurat, selection.method = 'vst', nfeatures = 1500)
+# seurat <- FindVariableFeatures(seurat, selection.method = 'vst', nfeatures = 1000, assay = "SCT")
+# head(seurat@assays$RNA@var.features)
+
+var.genes <- VariableFeatures(seurat)
+```
+
+```{r}
+seurat <- ScaleData(seurat, features=var.genes, vars.to.regress=c("nFeature_RNA","mitochondrial_percent_RNA"))
+```
+
+# Dimensionality reduction
+
+PCA 
+```{r message=FALSE}
+opts$npcs <- 25
+seurat <- RunPCA(seurat, features = var.genes, npcs = opts$npcs, verbose = FALSE)
+```
+
+t-SNE
+```{r}
+seurat <- RunTSNE(seurat, dims = 1:opts$npcs, perplexity=50)
+```
+
+UMAP
+
+```{r}
+opts$n.neighbors <- 25
+opts$min.dist <- 0.3
+```
+
+```{r message=FALSE}
+seurat <- RunUMAP(seurat, 
+  dims = 1:opts$npcs,
+  reduction = "pca",
+  n.neighbors = opts$n.neighbors,
+  min.dist = opts$min.dist
+)
+```
+
+# Clustering
+
+```{r}
+seurat <- FindNeighbors(seurat, k.param = 15)
+```
+
+```{r}
+seurat <- FindClusters(object = seurat, resolution = 0.6)
+table(seurat$seurat_clusters)
+```
+
+
+# Plot 
+
+```{r}
+# Idents(seurat) <- "RNA_snn_res.0.5"
+# Idents(seurat) <- "eight_cell_like_jasmin"
+Idents(seurat) <- "eight_cell_like_ricard"
+DimPlot(seurat, label = FALSE, reduction = 'umap', pt.size = 1) + 
+  NoLegend() +
+  NoAxes()
+```
+
+```{r}
+DimPlot(seurat, label = FALSE, reduction = 'tsne', pt.size = 1) + 
+  NoLegend() +
+  NoAxes()
+```
+
+```{r}
+Idents(seurat) <- "sample"
+Idents(seurat) <- is.na(seurat$celltype.mapped)
+p <- DimPlot(seurat, label = FALSE, reduction = 'umap', pt.size = 0.25) + 
+  NoAxes()
+
+# pdf(sprintf("/%s/umap_by_celltype.pdf",io$outdir,i), width=6, height=5, useDingbats = F)
+print(p)
+# dev.off()
+```
+
+```{r}
+FeaturePlot(seurat, features = "nFeature_RNA", reduction='umap', pt.size = 1, combine=T) &
+  NoAxes()
+```
+
+# Explore marker genes
+
+```{r}
+genes.to.plot <- c("DUXA")
+# genes.to.plot <- opts$ZGA_genes
+FeaturePlot(seurat, features = genes.to.plot, reduction='umap') & NoAxes() & NoLegend()
+```
+
+```{r}
+marker_genes.dt <- fread(io$atlas.marker_genes)
+```
+
+```{r}
+for (i in unique(marker_genes.dt$celltype)) {
+# for (i in head(unique(marker_genes.dt$celltype))) {
+  genes.to.plot <- marker_genes.dt[celltype==i] %>% setorder(N) %>% head(n=9) %>% .$gene
+  
+  p <- FeaturePlot(seurat, features = genes.to.plot, reduction='umap', combine=TRUE) & NoLegend() & 
+    theme(
+      axis.text = element_blank(),
+      axis.title = element_blank(),
+      axis.ticks = element_blank()
+    )
+  # p <- ggpubr::annotate_figure(p, top = ggpubr::text_grob(label = i, face = 'bold'))
+  # print(p)
+  
+  pdf(sprintf("/%s/marker_genes/%s.pdf",io$outdir,i), width=10, height=10, useDingbats = F)
+  print(p)
+  dev.off()
+}
+```
+
+
+
+
+
+```{r message=FALSE}
+seurat <- SCTransform(seurat, 
+  variable.features.n = 500, 
+  vars.to.regress = c("nFeature_RNA"),
+  verbose = FALSE
+)
+seurat <- RunPCA(seurat, verbose = F)
+seurat <- RunTSNE(seurat, perplexity=50)
+# seurat <- RunUMAP(seurat, dims=1:15, n.neighbors = 25, min.dist=0.3)
+seurat <- FindNeighbors(seurat, k.param = 15)
+seurat <- FindClusters(object = seurat, resolution = 0.75)
+
+Idents(seurat) <- "SCT_snn_res.0.5"
+# Idents(seurat) <- "eight_cell_like_jasmin"
+# Idents(seurat) <- "eight_cell_like_ricard"
+DimPlot(seurat, label = FALSE, reduction = 'tsne', pt.size = 1) + NoLegend() + NoAxes()
+DimPlot(seurat, label = FALSE, reduction = 'umap', pt.size = 1) + NoLegend() + NoAxes()
+```
+
+```{r}
+tmp <- seurat@meta.data[,c("SCT_snn_res.0.5"),drop=F] %>% as.data.table(keep.rownames = T) %>%
+  setnames(c("cell","cluster"))
+
+sample_metadata.to_save <- fread(io$metadata) %>% merge(tmp,by="cell")
+table(sample_metadata$sample)
+```
+

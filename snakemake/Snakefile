@@ -86,8 +86,8 @@ rule qc:
     params:
         sample=expand("{sample}", sample=config["samples"]),
         nFeature_RNA=1500,
-        percent_mt=15,
-        percent_rib=15,
+        percent_mt=25,
+        percent_rib=25,
         outdir=config["directories"]["results"]+"/rna/qc",
         memory=config["slurm"]["qc"]["memory"]
     conda:

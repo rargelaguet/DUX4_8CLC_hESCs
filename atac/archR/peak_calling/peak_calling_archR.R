@@ -17,7 +17,7 @@ source(here::here("utils.R"))
 io$outdir <- paste0(io$basedir,"/results/atac/archR/peak_calling")
 
 # Options
-opts$pvalue.cutoff <- 0.01
+opts$pvalue.cutoff <- 0.001
 opts$group.by <- "eight_cell_like_ricard"
 opts$ncores <- 2
 

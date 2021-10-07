@@ -1,44 +1,33 @@
+#####################
+## Define settings ##
+#####################
+
+here::i_am("atac/archR/processing/update_archR_metadata.R")
+
+source(here::here("settings.R"))
+source(here::here("utils.R"))
+
+
 ########################
 ## Load ArchR project ##
 ########################
 
-if (grepl("ricard",Sys.info()['nodename'])) {
-  source("/Users/ricard/gastrulation_multiome_10x/atac/archR/load_archR_project.R")
-} else if (grepl("ebi",Sys.info()['nodename'])) {
-  source("/homes/ricard/gastrulation_multiome_10x/atac/archR/load_archR_project.R")
-} else {
-  stop("Computer not recognised")
-}
+source(here::here("atac/archR/load_archR_project.R"))
 
 ############################################
 ## Merge archR metadata with RNA metadata ##
 ############################################
 
-
-# fetch archR's metadata (first time)
-# note that QC is done later in the QC/qc.R script
-# archr_metadata <- getCellColData(ArchRProject) %>%
-#   .[,c("cell", "barcode", "sample", "TSSEnrichment", "ReadsInTSS", "PromoterRatio", "NucleosomeRatio", "nFrags",  "BlacklistRatio")] %>%
-#   as.data.table(keep.rownames = T) %>%
-#   setnames("rn","archR_cell") %>%
-#   .[is.na(cell),cell:=stringr::str_replace_all(archR_cell,"#","_")] %>%
-#   .[is.na(sample),sample:=strsplit(archR_cell,"#") %>% map_chr(1)] %>%
-#   .[is.na(barcode),barcode:=strsplit(archR_cell,"#") %>% map_chr(2)]
-# 
-# cols.to.rename <- c("TSSEnrichment","ReadsInTSS","PromoterRatio","NucleosomeRatio","nFrags","BlacklistRatio")
-# idx.cols.to.rename <- which(colnames(archr_metadata)%in%cols.to.rename)
-# colnames(archr_metadata)[idx.cols.to.rename] <- paste0(colnames(archr_metadata)[idx.cols.to.rename], "_atac")
-
-# fetch pre-computed archR's metadata
+# Fetch pre-computed archR's metadata
 io$archr.metadata <- paste0(io$basedir,"/processed/atac/archR/sample_metadata_after_archR.txt.gz")
 archr_metadata <- fread(io$archr.metadata)
-stopifnot(all(rownames(ArchRProject) %in% archr_metadata$archR_cell))
+stopifnot(all(rownames(ArchRProject) %in% archr_metadata$cell))
 # cols.to.rename <- c("TSSEnrichment","ReadsInTSS","PromoterRatio","NucleosomeRatio","nFrags","BlacklistRatio")
 # idx.cols.to.rename <- which(colnames(archr_metadata)%in%cols.to.rename)
 # colnames(archr_metadata)[idx.cols.to.rename] <- paste0(colnames(archr_metadata)[idx.cols.to.rename], "_atac")
 
-# fetch the most updated metadata
-io$updated.metadata <- paste0(io$basedir,"/results/atac/archR/celltype_assignment/sample_metadata_after_archR.txt.gz")
+# Fetch the metadata file of interest
+io$updated.metadata <- paste0(io$basedir,"/sample_metadata.txt.gz")
 updated_metadata <- fread(io$updated.metadata)
 colnames(updated_metadata)
 
@@ -59,10 +48,10 @@ foo <- updated_metadata %>%
 #############################
 
 bar <- foo %>% 
-  .[archR_cell%in%rownames(ArchRProject)] %>% setkey(archR_cell) %>% .[rownames(ArchRProject)] %>%
-  as.data.frame() %>% tibble::column_to_rownames("archR_cell")
+  .[cell%in%rownames(ArchRProject)] %>% setkey(cell) %>% .[rownames(ArchRProject)] %>%
+  as.data.frame() %>% tibble::column_to_rownames("cell")
 
-stopifnot(all(bar$TSSEnrichment_atac == getCellColData(ArchRProject, "TSSEnrichment")[[1]]))
+stopifnot(bar$cell == rownames(getCellColData(ArchRProject)))
 
 for (i in colnames(bar)) {
   ArchRProject <- addCellColData(

@@ -76,6 +76,7 @@ model <- run_mofa(MOFAobject)
 
 plot_weights(model, factor = 8, view="ATAC_chromVAR", nfeatures = 10, text_size = 3)
 plot_weights(model, factor = 2, view="RNA", nfeatures = 15, text_size = 4)
+plot_top_weights(model, factor = 2, view="RNA", nfeatures = 15)
 
 
 plot_factor(model, factors = 2, color_by = "TRIM49", group_by = "sample", add_violin = T, add_boxplot = T, add_dots = F, legend=F) +
@@ -85,7 +86,7 @@ plot_factor(model, factors = 2, color_by = "TRIM49", group_by = "sample", add_vi
     axis.ticks.x = element_blank()
   )
 
-plot_factors(model, factors = c(1,2), color_by = "sample") +
+plot_factors(model, factors = c(1,3), color_by = "ZSCAN4") +
   # scale_fill_manual(values=opts$celltype.colors) +
   theme(
     legend.position = "none"

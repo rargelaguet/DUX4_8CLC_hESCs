@@ -56,7 +56,9 @@ sce <- sce[grep("^Rik|Rik$|^mt-|^Rps-|^Gm",rownames(sce),invert=T)]
 
 Select HVG
 ```{r}
-decomp <- modelGeneVar(sce) %>% as.data.table(keep.rownames = T) %>% setnames("rn","gene") %>% setorder(FDR,na.last=T)
+decomp <- modelGeneVar(sce) %>% as.data.table(keep.rownames = T) %>% 
+  setnames("rn","gene") %>% setorder(FDR,na.last=T)
+
 hvgs <- decomp[mean>0.001 & p.value<0.10,gene]
 
 # Subset SingleCellExperiment

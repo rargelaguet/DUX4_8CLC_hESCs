@@ -33,15 +33,16 @@ source(here::here("utils.R"))
 
 ## START TEST ##
 args <- list()
-args$metadata <- file.path(io$basedir,"results/atac/archR/qc/sample_metadata_after_qc.txt.gz")
+# args$metadata <- file.path(io$basedir,"results/atac/archR/qc/sample_metadata_after_qc.txt.gz")
+args$metadata <- io$metadata
 args$samples <- opts$samples
 args$nfeatures <- 15000
-args$matrix <- "GeneScoreMatrix_TSS"
-args$ndims <- 30
+args$matrix <- "PeakMatrix"
+args$ndims <- 25
 args$seed <- 42
 args$n_neighbors <- 25
 args$min_dist <- 0.3
-args$colour_by <- c("sample","log_nFrags_atac")
+args$colour_by <- c("sample","log_nFrags_atac","eight_cell_like_ricard")
 args$outdir <- file.path(io$basedir,"results/atac/archR/dimensionality_reduction")
 ## END TEST ##
 
@@ -209,6 +210,8 @@ fwrite(lsi.dt, outfile)
 ## UMAP ##
 ##########
 
+# i <- args$n_neighbors[1]
+# j <- args$min_dist[1]
 for (i in args$n_neighbors) {
   for (j in args$min_dist) {
     
@@ -247,6 +250,7 @@ for (i in args$n_neighbors) {
     to.plot <- umap.dt %>%
       merge(sample_metadata,by="cell")
     
+    # k <- "eight_cell_like_ricard"
     for (k in args$colour_by) {
       
       p <- ggplot(to.plot, aes_string(x="umap1", y="umap2", fill=k)) +
