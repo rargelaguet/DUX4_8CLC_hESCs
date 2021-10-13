@@ -1,8 +1,36 @@
 # https://www.ArchRProject.com/bookdown/calling-peaks-with-archr.html
 # Note: this requires the creation of pseudobulk replicates with 'addGroupCoverages'
-# see /.../atac/archR/pseudobulk/archR_pseudobulk_celltypes.R
+# https://www.ArchRProject.com/bookdown/how-does-archr-make-pseudo-bulk-replicates.html
+# see /.../atac/archR/pseudobulk/1_archR_add_GroupCoverage.R
+
+suppressPackageStartupMessages(library(ArchR))
+suppressPackageStartupMessages(library(argparse))
 
 here::i_am("atac/archR/peak_calling/peak_calling_archR.R")
+
+######################
+## Define arguments ##
+######################
+
+p <- ArgumentParser(description='')
+p$add_argument('--metadata',    type="character",    help='metadata file')
+p$add_argument('--outdir',     type="character",    help='Output directory')
+p$add_argument('--pathToMacs2',     type="character",    help='Path to MACS2 software')
+p$add_argument('--group_by',     type="character",    help='Metadata column to group by')
+p$add_argument('--pvalue_cutoff',     type="float",   help='MACS2 p-value cutoff')
+p$add_argument('--extend_summits',     type="integer",   help='Number of bp to extend peak summits')
+p$add_argument('--threads',     type="integer",    default=1,    help='Number of threads')
+
+args <- p$parse_args(commandArgs(TRUE))
+
+## START TEST ##
+args$metadata <- "/bi/group/reik/ricard/data/DUX4_hESCs_multiome/results/atac/archR/test/qc/sample_metadata_after_qc.txt.gz"
+args$pathToMacs2 <- "/bi/group/reik/ricard/software/miniconda3/envs/main/bin/macs2"
+args$group_by <- "cluster"
+args$pvalue_cutoff <- 1e-3
+args$extend_summits <- 300
+args$threads <- 1
+## END TEST ##
 
 #####################
 ## Define settings ##
@@ -11,15 +39,14 @@ here::i_am("atac/archR/peak_calling/peak_calling_archR.R")
 source(here::here("settings.R"))
 source(here::here("utils.R"))
 
-# I/O
-# io$metadata <- paste0(io$basedir,"/sample_metadata.txt.gz")
-# io$metadata <- paste0(io$basedir,"/results/atac/archR/qc/sample_metadata_after_qc.txt.gz")
-io$outdir <- paste0(io$basedir,"/results/atac/archR/peak_calling")
+########################
+## Load cell metadata ##
+########################
 
-# Options
-opts$pvalue.cutoff <- 0.001
-opts$group.by <- "eight_cell_like_ricard"
-opts$ncores <- 2
+sample_metadata <- fread(args$metadata) %>%
+  .[pass_atacQC==TRUE & sample%in%opts$samples]
+stopifnot(args$group_by%in%colnames(sample_metadata))
+sample_metadata <- sample_metadata[!is.na(sample_metadata[[args$group_by]])]
 
 ########################
 ## Load ArchR project ##
@@ -27,24 +54,10 @@ opts$ncores <- 2
 
 source(here::here("atac/archR/load_archR_project.R"))
 
-addArchRThreads(threads = opts$ncores)
+addArchRThreads(threads = args$threads)
 
-########################
-## Load cell metadata ##
-########################
-
-sample_metadata <- fread(io$metadata) %>%
-  .[pass_atacQC==TRUE & !is.na(eight_cell_like_ricard)] %>%
-  .[sample%in%opts$samples]
-
-stopifnot(sample_metadata$cell %in% rownames(ArchRProject))
-
-##################
-## Subset ArchR ##
-##################
-
+# Subset
 ArchRProject.filt <- ArchRProject[sample_metadata$cell]
-table(getCellColData(ArchRProject.filt,"Sample")[[1]])
 
 ###########################
 ## Update ArchR metadata ##
@@ -57,61 +70,49 @@ sample_metadata.to.archr <- sample_metadata %>%
 stopifnot(all(rownames(sample_metadata.to.archr) == rownames(getCellColData(ArchRProject.filt))))
 ArchRProject.filt <- addCellColData(
   ArchRProject.filt,
-  data = sample_metadata.to.archr[[opts$group.by]],
-  name = opts$group.by,
+  data = sample_metadata.to.archr[[args$group_by]],
+  name = args$group_by,
   cells = rownames(sample_metadata.to.archr),
   force = TRUE
 )
 
-stopifnot(opts$group.by %in% names(ArchRProject.filt@projectMetadata$GroupCoverages))
-
 # print cell numbers
 table(getCellColData(ArchRProject.filt,"Sample")[[1]])
-table(getCellColData(ArchRProject.filt,opts$group.by)[[1]])
+table(getCellColData(ArchRProject.filt,args$group_by)[[1]])
+
 
 ##################
 ## Peak calling ##
 ##################
 
-# This function will get insertions from coverage files, call peaks, and merge peaks to get a "Union Reproducible Peak Set".
-
 ArchRProject.filt <- addReproduciblePeakSet(
   ArchRProj = ArchRProject.filt, 
-  groupBy = opts$group.by, 
+  groupBy = args$group_by, 
   peakMethod = "Macs2",
   excludeChr = c("chrM", "chrY"),
-  pathToMacs2 = io$pathToMacs2,
-  cutOff = opts$pvalue.cutoff,
-  extendSummits = 300,
+  pathToMacs2 = args$pathToMacs2,
+  cutOff = args$pvalue_cutoff,
+  extendSummits = args$extend_summits,
   plot = FALSE,
   force = TRUE
 )
-
-##################
-## Filter Peaks ##
-##################
-
-# NOTE: THIS DOESN'T UPDATE THE CONTENT THAT HAS BEEN STORED IN TEH ARROWFILE SUCH AS "sumy <- h5read(ArrowFiles[y], paste0(useMatrix, "/", seqnames[x], "/rowSums"))"
-# opts$min.score <- 25
-# ArchRProject.filt@peakSet <- ArchRProject.filt@peakSet[ArchRProject.filt@peakSet$score>=opts$min.score]
 
 ################
 ## Save peaks ##
 ################
 
 # Save PeakSet
-saveRDS(ArchRProject.filt@peakSet, paste0(io$archR.directory,"/PeakSet.rds"))
+# NOTE THAT THIS HAS TO GO TO ARCHR DIRECTORY
+saveRDS(ArchRProject.filt@peakSet, file.path(args$outdir,"/PeakSet.rds"))
 
 # fetch peaks in data.table format
 dt <- getPeakSet(ArchRProject.filt) %>% as.data.table() %>% setnames("seqnames","chr")
 
 # Save peak metadata
-outfile <- file.path(io$archR.directory,"PeakCalls/peak_metadata.tsv.gz")
-fwrite(dt, outfile, sep="\t")
+fwrite(dt, file.path(args$outdir,"peak_metadata.tsv.gz"), sep="\t")
 
 # save peaks in bed format
-to.save <- dt[,c("chr","start","end")]
-fwrite(to.save, file.path(io$archR.directory,"PeakCalls/peaks_archR_macs2.bed.gz"), sep="\t", col.names = F)
+fwrite(dt[,c("chr","start","end")], file.path(args$outdir,"peaks_archR_macs2.bed.gz"), sep="\t", col.names = F)
 
 #####################
 ## Add peak matrix ##

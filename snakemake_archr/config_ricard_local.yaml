@@ -53,6 +53,12 @@ qc_archr:
     max_blacklist_ratio: 0.05
     threads: 2
 
+pseudobulk_add_group_coverage:
+    group_by: "cluster"
+    min_cells: 25
+    max_cells: 100
+
+
 ###########
 ## Slurm ##
 ###########
@@ -68,5 +74,8 @@ slurm:  # memory in GB
         cores: 1
         memory: 10
     qc_archr: 
+        cores: 1
+        memory: 10
+    pseudobulk_add_group_coverage:
         cores: 1
         memory: 10

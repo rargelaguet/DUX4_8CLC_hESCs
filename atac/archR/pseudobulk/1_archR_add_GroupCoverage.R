@@ -1,12 +1,9 @@
 # https://www.ArchRProject.com/bookdown/how-does-archr-make-pseudo-bulk-replicates.html
 
-here::i_am("atac/archR/pseudobulk/1_archR_add_GroupCoverage.R")
-
-
 suppressPackageStartupMessages(library(ArchR))
 suppressPackageStartupMessages(library(argparse))
 
-here::i_am("atac/archR/processing/3_qc.R")
+here::i_am("atac/archR/pseudobulk/1_archR_add_GroupCoverage.R")
 
 ######################
 ## Define arguments ##
@@ -39,26 +36,21 @@ source(here::here("settings.R"))
 source(here::here("utils.R"))
 
 ########################
+## Load cell metadata ##
+########################
+
+sample_metadata <- fread(args$metadata) %>%
+  .[pass_atacQC==TRUE & sample%in%opts$samples]
+stopifnot(args$group_by%in%colnames(sample_metadata))
+sample_metadata <- sample_metadata[!is.na(sample_metadata[[args$group_by]])]
+
+########################
 ## Load ArchR project ##
 ########################
 
 source(here::here("atac/archR/load_archR_project.R"))
 
 addArchRThreads(threads = args$threads)
-
-########################
-## Load cell metadata ##
-########################
-
-# Load cell metadata
-sample_metadata <- fread(args$metadata) %>%
-  .[pass_rnaQC==TRUE & sample%in%opts$samples]
-stopifnot(args$group_by%in%colnames(sample_metadata))
-sample_metadata <- sample_metadata[!is.na(sample_metadata[[args$group_by]])]
-
-##################
-## Subset ArchR ##
-##################
 
 # Subset
 ArchRProject.filt <- ArchRProject[sample_metadata$cell]

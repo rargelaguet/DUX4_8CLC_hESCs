@@ -29,9 +29,9 @@ source(here::here("settings.R"))
 ## Load metadata ##
 ###################
 
-# This metadata file is typically derived from the RNA pipeline
-sample_metadata <- fread(args$metadata) %>%
-  .[,c("cell", "sample", "barcode", "nFeature_RNA", "nCount_RNA", "mitochondrial_percent_RNA", "ribosomal_percent_RNA", "pass_rnaQC", "doublet_score", "doublet_call")]
+# Note that this metadata file can be derived from the RNA pipeline
+sample_metadata <- fread(args$metadata)# %>%
+  # .[,c("cell", "sample", "barcode", "nFeature_RNA", "nCount_RNA", "mitochondrial_percent_RNA", "ribosomal_percent_RNA", "pass_rnaQC", "doublet_score", "doublet_call")]
 
 ########################
 ## Load ArchR project ##

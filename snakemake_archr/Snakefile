@@ -121,7 +121,7 @@ rule qc_archr:
         config["directories"]["results"]+"/qc/qc_TSSenrichment.pdf",
         config["directories"]["results"]+"/qc/qc_metrics_histogram.pdf",
         config["directories"]["results"]+"/qc/qc_metrics_barplot.pdf",
-        metadata=config["directories"]["results"]+"/sample_metadata_after_qc.txt.gz"
+        metadata=config["directories"]["results"]+"/qc/sample_metadata_after_qc.txt.gz"
     params:
         min_tss_enrichment = config["qc_archr"]["min_tss_enrichment"],
         min_number_fragments = config["qc_archr"]["min_number_fragments"],
@@ -136,9 +136,9 @@ rule qc_archr:
         --max_blacklist_ratio {params.max_blacklist_ratio} --threads {threads} --outdir {params.outdir} > {log}"
 
 
-########
-## QC ##
-########
+################
+## Pseudobulk ##
+################
 
 rule pseudobulk_add_group_coverage:
     input:
@@ -151,9 +151,9 @@ rule pseudobulk_add_group_coverage:
 		# FALSE._.HNES1_wildtype_L001.insertions.coverage.h5
 		# TRUE._.Rep1.insertions.cover
     params:
-    	group_by = config["pseudobulk_add_group_coverage"]["group_by"]
-        min_tss_enrichment = config["pseudobulk_add_group_coverage"]["min_cells"],
-        min_number_fragments = config["pseudobulk_add_group_coverage"]["max_cells"],
+    	group_by = config["pseudobulk_add_group_coverage"]["group_by"],
+        min_cells = config["pseudobulk_add_group_coverage"]["min_cells"],
+        max_cells = config["pseudobulk_add_group_coverage"]["max_cells"],
         memory = config["slurm"]["pseudobulk_add_group_coverage"]["memory"]
     threads: 1
     log: 
@@ -162,3 +162,26 @@ rule pseudobulk_add_group_coverage:
         "Rscript {input.script} --metadata {input.metadata} --group_by {params.group_by} --min_cells {params.min_cells} \
         --max_cells {params.max_cells} --threads {threads} > {log}"
 
+
+##################
+## Peak calling ##
+##################
+
+rule peak_calling:
+    input:
+        script = config["scripts"]["peak_calling"],
+        metadata = rules.qc_archr.output.metadata
+    output:
+        # config["directories"]["processed_data"]+"/projectMetadata.rds"
+    params:
+        group_by = config["peak_calling"]["group_by"],
+        pathToMacs2 = config["peak_calling"]["pathToMacs2"],
+        pvalue_cutoff = config["peak_calling"]["pvalue_cutoff"],
+        extend_summits = config["peak_calling"]["extend_summits"],
+        memory = config["slurm"]["peak_calling"]["memory"]
+    threads: 1
+    log: 
+        "logs/peak_calling.log"
+    shell:
+        "Rscript {input.script} --metadata {input.metadata} --pathToMacs2 {params.pathToMacs2} --outdir {params.outdir} --group_by {params.group_by} --pvalue_cutoff {params.pvalue_cutoff} \
+        --extend_summits {params.extend_summits} --threads {threads} > {log}"
