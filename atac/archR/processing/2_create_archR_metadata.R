@@ -15,8 +15,8 @@ p$add_argument('--outfile',     type="character",    help='Output file')
 args <- p$parse_args(commandArgs(TRUE))
 
 ## START TEST ##
-# args$metadata <- "/Users/argelagr/data/DUX4_hESCs_multiome/results/rna/doublet_detection/sample_metadata_after_doublets.txt.gz"
-# args$outfile <- "/bi/group/reik/ricard/data/DUX4_hESCs_multiome/processed/atac/archR/sample_metadata_after_archR.txt.gz"
+# args$metadata <- "/bi/group/reik/ricard/data/DUX4_hESCs_multiome/results/rna/clustering/sample_metadata_after_clustering.txt.gz"
+# args$outfile <- "/bi/group/reik/ricard/data/DUX4_hESCs_multiome/processed/atac/archR/test/sample_metadata_after_archR.txt.gz"
 ## END TEST ##
 
 #####################

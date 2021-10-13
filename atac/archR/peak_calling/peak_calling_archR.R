@@ -17,19 +17,19 @@ p$add_argument('--metadata',    type="character",    help='metadata file')
 p$add_argument('--outdir',     type="character",    help='Output directory')
 p$add_argument('--pathToMacs2',     type="character",    help='Path to MACS2 software')
 p$add_argument('--group_by',     type="character",    help='Metadata column to group by')
-p$add_argument('--pvalue_cutoff',     type="float",   help='MACS2 p-value cutoff')
+p$add_argument('--pvalue_cutoff',     type="double",   help='MACS2 p-value cutoff')
 p$add_argument('--extend_summits',     type="integer",   help='Number of bp to extend peak summits')
 p$add_argument('--threads',     type="integer",    default=1,    help='Number of threads')
 
 args <- p$parse_args(commandArgs(TRUE))
 
 ## START TEST ##
-args$metadata <- "/bi/group/reik/ricard/data/DUX4_hESCs_multiome/results/atac/archR/test/qc/sample_metadata_after_qc.txt.gz"
-args$pathToMacs2 <- "/bi/group/reik/ricard/software/miniconda3/envs/main/bin/macs2"
-args$group_by <- "cluster"
-args$pvalue_cutoff <- 1e-3
-args$extend_summits <- 300
-args$threads <- 1
+# args$metadata <- "/bi/group/reik/ricard/data/DUX4_hESCs_multiome/results/atac/archR/test/qc/sample_metadata_after_qc.txt.gz"
+# args$pathToMacs2 <- "/bi/group/reik/ricard/software/miniconda3/envs/main/bin/macs2"
+# args$group_by <- "cluster"
+# args$pvalue_cutoff <- 1e-3
+# args$extend_summits <- 300
+# args$threads <- 1
 ## END TEST ##
 
 #####################

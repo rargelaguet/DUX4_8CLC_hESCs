@@ -30,7 +30,12 @@ rule all:
         # config["directories"]["processed_data"]+"/Save-ArchR-Project.rds"
         # config["directories"]["processed_data"]+"/sample_metadata_after_archR.txt.gz"
         # config["directories"]["results"]+"/sample_metadata_after_qc.txt.gz"
-        config["directories"]["processed_data"]+"/projectMetadata.rds"
+        # config["directories"]["processed_data"]+"/projectMetadata.rds"
+        config["directories"]["processed_data"]+"/PeakCalls/PeakSet.rds",
+        config["directories"]["processed_data"]+"/PeakCalls/peak_metadata.tsv.gz",
+        config["directories"]["processed_data"]+"/PeakCalls/peaks_archR_macs2.bed.gz",
+        config["directories"]["results"]+"/gene_scores/GeneScoreMatrix_distal.rds",
+        config["directories"]["results"]+"/gene_scores/GeneScoreMatrix_tss.rds"
 
 ########################
 ## Create arrow files ##
@@ -172,12 +177,15 @@ rule peak_calling:
         script = config["scripts"]["peak_calling"],
         metadata = rules.qc_archr.output.metadata
     output:
-        # config["directories"]["processed_data"]+"/projectMetadata.rds"
+        config["directories"]["processed_data"]+"/PeakCalls/PeakSet.rds",
+        config["directories"]["processed_data"]+"/PeakCalls/peak_metadata.tsv.gz",
+        config["directories"]["processed_data"]+"/PeakCalls/peaks_archR_macs2.bed.gz"
     params:
         group_by = config["peak_calling"]["group_by"],
         pathToMacs2 = config["peak_calling"]["pathToMacs2"],
         pvalue_cutoff = config["peak_calling"]["pvalue_cutoff"],
         extend_summits = config["peak_calling"]["extend_summits"],
+        outdir = config["directories"]["processed_data"]+"/PeakCalls",
         memory = config["slurm"]["peak_calling"]["memory"]
     threads: 1
     log: 
@@ -185,3 +193,22 @@ rule peak_calling:
     shell:
         "Rscript {input.script} --metadata {input.metadata} --pathToMacs2 {params.pathToMacs2} --outdir {params.outdir} --group_by {params.group_by} --pvalue_cutoff {params.pvalue_cutoff} \
         --extend_summits {params.extend_summits} --threads {threads} > {log}"
+
+#####################
+## Add gene scores ##
+#####################
+
+rule add_gene_scores:
+    input:
+        script = config["scripts"]["gene_scores"],
+        metadata = rules.create_archr_metadata.output
+    output:
+        config["directories"]["results"]+"/gene_scores/GeneScoreMatrix_distal.rds",
+        config["directories"]["results"]+"/gene_scores/GeneScoreMatrix_tss.rds"
+    params:
+        outdir = config["directories"]["results"]+"/gene_scores"
+    threads: 1
+    log: 
+        "logs/gene_scores.log"
+    shell:
+        "Rscript {input.script}  --metadata {input.metadata} --outdir {params.outdir} > {log}"

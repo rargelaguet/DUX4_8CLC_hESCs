@@ -1,10 +1,30 @@
 # https://www.archrproject.com/bookdown/calculating-gene-scores-in-archr.html
 
+suppressPackageStartupMessages(library(ArchR))
+suppressPackageStartupMessages(library(argparse))
+
+here::i_am("atac/archR/gene_scores/add_GeneScore_matrices.R")
+
+######################
+## Define arguments ##
+######################
+
+p <- ArgumentParser(description='')
+p$add_argument('--metadata',    type="character",    help='metadata file')
+p$add_argument('--outdir',    type="character",    help='Output directory')
+p$add_argument('--threads',     type="integer",    default=1,    help='Number of threads')
+
+args <- p$parse_args(commandArgs(TRUE))
+
+## START TEST ##
+# args$metadata <- "/bi/group/reik/ricard/data/DUX4_hESCs_multiome/processed/atac/archR/sample_metadata_after_archR.txt.gz"
+# args$outdir <- "/bi/group/reik/ricard/data/DUX4_hESCs_multiome/results/atac/archR/gene_scores"
+# args$threads <- 1
+## END TEST ##
+
 #####################
 ## Define settings ##
 #####################
-
-here::i_am("atac/archR/gene_scores/add_GeneScore_matrices.R")
 
 source(here::here("settings.R"))
 source(here::here("utils.R"))
@@ -14,6 +34,8 @@ source(here::here("utils.R"))
 ########################
 
 source(here::here("atac/archR/load_archR_project.R"))
+
+addArchRThreads(threads=args$threads) 
 
 #####################
 ## Define gene set ##
@@ -44,6 +66,11 @@ addGeneScoreMatrix(
   excludeChr = c("chrY", "chrM")
 )
 
+# Save
+GeneScoreMatrix.se <- getMatrixFromProject(ArchRProject, binarize = FALSE, useMatrix = "GeneScoreMatrix_distal")
+rownames(GeneScoreMatrix.se) <- rowData(GeneScoreMatrix.se)$name
+saveRDS(GeneScoreMatrix.se, file.path(args$outdir,"GeneScoreMatrix_distal.rds"))
+
 #############################################
 ## Add Gene Scores ignoring distal regions ##
 #############################################
@@ -68,14 +95,7 @@ addGeneScoreMatrix(
   force = TRUE
 )
 
-
-##########
-## Test ##
-##########
-
-# atac.GeneScoreMatrix.se <- getMatrixFromProject(ArchRProject, binarize = FALSE, useMatrix = "GeneScoreMatrix_nodistal_v2")
-# rownames(atac.GeneScoreMatrix.se) <- rowData(atac.GeneScoreMatrix.se)$name
-# tmp <- rowMeans(assay(atac.GeneScoreMatrix.se)) %>% sort(decreasing = T)
-# head(tmp)
-# tmp[c("Auts2","Nav2")]
-# tmp[c("Actb","Polr2f")]
+# Save
+GeneScoreMatrix.se <- getMatrixFromProject(ArchRProject, binarize = FALSE, useMatrix = "GeneScoreMatrix_TSS")
+rownames(GeneScoreMatrix.se) <- rowData(GeneScoreMatrix.se)$name
+saveRDS(GeneScoreMatrix.se, file.path(args$outdir,"GeneScoreMatrix_tss.rds"))
