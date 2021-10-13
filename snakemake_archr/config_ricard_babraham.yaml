@@ -23,8 +23,8 @@ files:
 scripts:
     create_arrow_files: ../atac/archR/processing/0_create_arrow_files.R
     create_archr_project: ../atac/archR/processing/1_create_archR_project.R
-    create_metadata: ../atac/archR/processing/2_create_archR_metadata.R
-    qc: ../atac/archR/processing/3_qc.R
+    create_archr_metadata: ../atac/archR/processing/2_create_archR_metadata.R
+    qc_archr: ../atac/archR/processing/3_qc.R
     add_gene_scores: ../atac/archR/gene_scores/add_GeneScore_matrices.R
     pseudobulk_add_group_coverage: ../atac/archR/pseudobulk/1_archR_add_GroupCoverage.R
     pseudobulk: ../atac/archR/pseudobulk/2_archR_pseudobulk_celltypes.R
@@ -44,18 +44,30 @@ create_arrow_files:
 create_archr_project:
     genome: "hg38"
 
-qc:
+create_archr_metadata:
+    genome: "hg38"
+
+qc_archr:
     min_tss_enrichment: 8
     min_number_fragments: 3000
     max_blacklist_ratio: 0.05
     threads: 2
 
+
+###########
+## Slurm ##
+###########
+
 slurm:  # memory in GB
     create_arrow_files: 
+        cores: 2
         memory: 10
     create_archr_project:
+        cores: 1
         memory: 10
     create_archr_metadata:
+        cores: 1
         memory: 10
-    qc: 
+    qc_archr: 
+        cores: 1
         memory: 10

@@ -26,7 +26,11 @@ else:
 
 rule all:
     input:
-        expand(config["directories"]["processed_data"]+"/{sample}.arrow", sample=config["samples"])
+        # expand(config["directories"]["processed_data"]+"/{sample}.arrow", sample=config["samples"])
+        # config["directories"]["processed_data"]+"/Save-ArchR-Project.rds"
+        # config["directories"]["processed_data"]+"/sample_metadata_after_archR.txt.gz"
+        # config["directories"]["results"]+"/sample_metadata_after_qc.txt.gz"
+        config["directories"]["processed_data"]+"/projectMetadata.rds"
 
 ########################
 ## Create arrow files ##
@@ -34,9 +38,9 @@ rule all:
 
 rule create_arrow_files:
     input:
-        script=config["scripts"]["create_arrow_files"],
-        fragments_files=expand(config["directories"]["original_data"]+"{sample}/atac_fragments.tsv.gz".
-            sample=config["samples"])
+        script = config["scripts"]["create_arrow_files"],
+        # fragments_files = expand(config["directories"]["original_data"]+"/{sample}/atac_fragments.tsv.gz", sample=config["samples"])
+        fragments_files = config["directories"]["original_data"]+"/{sample}/atac_fragments.tsv.gz"
     output:
         config["directories"]["processed_data"]+"/{sample}.arrow"
     params:
@@ -48,11 +52,13 @@ rule create_arrow_files:
         max_fragments = config["create_arrow_files"]["max_fragments"],
         min_tss_score = config["create_arrow_files"]["min_tss_score"],
         threads = config["create_arrow_files"]["threads"],
-        memory = config["slurm"]["create_arrow_files"]["memory"]
+        memory = config["slurm"]["create_arrow_files"]["memory"],
+        cores = config["slurm"]["create_arrow_files"]["cores"]
+    threads: 2
     log: 
         "logs/create_arrow_files_{sample}.log"
     shell:
-        "Rscript {input.script}  --samples {params.sample} --fragments_files {input.fragments_files} --genome {params.genome} --min_fragments {params.min_fragments} \
+        "Rscript {input.script}  --samples {wildcards.sample} --fragments_files {input.fragments_files} --genome {params.genome} --min_fragments {params.min_fragments} \
         --max_fragments {params.max_fragments} --min_tss_score {params.min_tss_score} --threads {params.threads} --outdir {params.outdir} > {log}"
 
 
@@ -62,13 +68,16 @@ rule create_arrow_files:
 
 rule create_archr_project:
     input:
-        script=config["scripts"]["create_archr_project"],
-        arrow_files=rules.create_arrow_files.output
+        script = config["scripts"]["create_archr_project"],
+        # arrow_files = rules.create_arrow_files.output
+        arrow_files = expand(config["directories"]["processed_data"]+"/{sample}.arrow", sample=config["samples"])
     output:
-        config["directories"]["processed_data"]+"/{sample}.arrow"
+        config["directories"]["processed_data"]+"/Save-ArchR-Project.rds"
     params:
         genome = config["create_archr_project"]["genome"],
         outdir = config["directories"]["processed_data"],
+        cores = config["slurm"]["create_archr_project"]["cores"]
+    threads: 1
     log: 
         "logs/create_archr_project.log"
     shell:
@@ -81,13 +90,75 @@ rule create_archr_project:
 
 rule create_archr_metadata:
     input:
-        metadata=config["files"]["rna_metadata"],
+        script = config["scripts"]["create_archr_metadata"],
+        metadata = config["files"]["rna_metadata"]
     output:
         config["directories"]["processed_data"]+"/sample_metadata_after_archR.txt.gz"
     params:
-        genome = config["create_archr_project"]["genome"],
+        genome = config["create_archr_metadata"]["genome"],
         # outfile = config["directories"]["processed_data"]+"/sample_metadata_after_archR.txt.gz"
+        cores = config["slurm"]["create_archr_metadata"]["cores"],
+        memory = config["slurm"]["create_archr_metadata"]["memory"]
+    threads: 1
     log: 
         "logs/create_archr_metadata.log"
     shell:
         "Rscript {input.script} --metadata {input.metadata} --outfile {output} > {log}"
+
+
+########
+## QC ##
+########
+
+rule qc_archr:
+    input:
+        script = config["scripts"]["qc_archr"],
+        metadata = rules.create_archr_metadata.output
+    output:
+        config["directories"]["results"]+"/qc/qc_FragmentSizeDistribution.txt.gz",
+        config["directories"]["results"]+"/qc/qc_FragmentSizeDistribution.pdf",
+        config["directories"]["results"]+"/qc/qc_TSSenrichment.txt.gz",
+        config["directories"]["results"]+"/qc/qc_TSSenrichment.pdf",
+        config["directories"]["results"]+"/qc/qc_metrics_histogram.pdf",
+        config["directories"]["results"]+"/qc/qc_metrics_barplot.pdf",
+        metadata=config["directories"]["results"]+"/sample_metadata_after_qc.txt.gz"
+    params:
+        min_tss_enrichment = config["qc_archr"]["min_tss_enrichment"],
+        min_number_fragments = config["qc_archr"]["min_number_fragments"],
+        max_blacklist_ratio = config["qc_archr"]["max_blacklist_ratio"],
+        outdir = config["directories"]["results"]+"/qc",
+        memory = config["slurm"]["qc_archr"]["memory"]
+    threads: 1
+    log: 
+        "logs/qc_archr.log"
+    shell:
+        "Rscript {input.script} --metadata {input.metadata} --min_tss_enrichment {params.min_tss_enrichment} --min_number_fragments {params.min_number_fragments} \
+        --max_blacklist_ratio {params.max_blacklist_ratio} --threads {threads} --outdir {params.outdir} > {log}"
+
+
+########
+## QC ##
+########
+
+rule pseudobulk_add_group_coverage:
+    input:
+        script = config["scripts"]["pseudobulk_add_group_coverage"],
+        metadata = rules.qc_archr.output.metadata
+    output:
+    	config["directories"]["processed_data"]+"/projectMetadata.rds"
+    	# /bi/group/reik/ricard/data/DUX4_hESCs_multiome/processed/atac/archR/GroupCoverages/eight_cell_like_ricard
+  #   	FALSE._.HNES1_DUX4_overexpression_L001.insertions.coverage.h5
+		# FALSE._.HNES1_wildtype_L001.insertions.coverage.h5
+		# TRUE._.Rep1.insertions.cover
+    params:
+    	group_by = config["pseudobulk_add_group_coverage"]["group_by"]
+        min_tss_enrichment = config["pseudobulk_add_group_coverage"]["min_cells"],
+        min_number_fragments = config["pseudobulk_add_group_coverage"]["max_cells"],
+        memory = config["slurm"]["pseudobulk_add_group_coverage"]["memory"]
+    threads: 1
+    log: 
+        "logs/pseudobulk_add_group_coverage.log"
+    shell:
+        "Rscript {input.script} --metadata {input.metadata} --group_by {params.group_by} --min_cells {params.min_cells} \
+        --max_cells {params.max_cells} --threads {threads} > {log}"
+
