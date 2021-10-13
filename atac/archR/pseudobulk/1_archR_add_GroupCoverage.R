@@ -2,6 +2,35 @@
 
 here::i_am("atac/archR/pseudobulk/1_archR_add_GroupCoverage.R")
 
+
+suppressPackageStartupMessages(library(ArchR))
+suppressPackageStartupMessages(library(argparse))
+
+here::i_am("atac/archR/processing/3_qc.R")
+
+######################
+## Define arguments ##
+######################
+
+p <- ArgumentParser(description='')
+p$add_argument('--metadata',    type="character",    help='metadata file')
+# p$add_argument('--outdir',     type="character",    help='Output directory')
+p$add_argument('--group_by',     type="character",    help='Metadata column to group by')
+p$add_argument('--min_cells',     type="integer",    default=25,   help='Minimum number of cells')
+p$add_argument('--max_cells',     type="integer",    default=1000,   help='Maximum number of cells')
+p$add_argument('--threads',     type="integer",    default=1,    help='Number of threads')
+
+args <- p$parse_args(commandArgs(TRUE))
+
+## START TEST ##
+# args$metadata <- "/bi/group/reik/ricard/data/DUX4_hESCs_multiome/results/atac/archR/qc/sample_metadata_after_qc.txt.gz"
+# args$group_by <- "cluster"
+# args$min_cells <- 25
+# args$max_cells <- 100
+# args$threads <- 1
+## END TEST ##
+
+
 #####################
 ## Define settings ##
 #####################
@@ -9,27 +38,23 @@ here::i_am("atac/archR/pseudobulk/1_archR_add_GroupCoverage.R")
 source(here::here("settings.R"))
 source(here::here("utils.R"))
 
-# I/O
-io$metadata <- file.path(io$basedir,"/results/rna/dimensionality_reduction/sample_metadata_after_clustering.txt.gz")
-
-# Options
-opts$group.by <- "eight_cell_like_ricard"
-opts$ncores <- 2
-
 ########################
 ## Load ArchR project ##
 ########################
 
 source(here::here("atac/archR/load_archR_project.R"))
 
-addArchRThreads(threads = opts$ncores)
+addArchRThreads(threads = args$threads)
 
 ########################
 ## Load cell metadata ##
 ########################
 
-sample_metadata <- fread(io$metadata) %>%
-  .[pass_atacQC==TRUE & !is.na(eight_cell_like_ricard) & sample%in%opts$samples]
+# Load cell metadata
+sample_metadata <- fread(args$metadata) %>%
+  .[pass_rnaQC==TRUE & sample%in%opts$samples]
+stopifnot(args$group_by%in%colnames(sample_metadata))
+sample_metadata <- sample_metadata[!is.na(sample_metadata[[args$group_by]])]
 
 ##################
 ## Subset ArchR ##
@@ -49,31 +74,31 @@ sample_metadata.to.archr <- sample_metadata %>%
 stopifnot(all(rownames(sample_metadata.to.archr) == rownames(getCellColData(ArchRProject.filt))))
 ArchRProject.filt <- addCellColData(
   ArchRProject.filt,
-  data = sample_metadata.to.archr[[opts$group.by]],
-  name = opts$group.by,
+  data = sample_metadata.to.archr[[args$group_by]],
+  name = args$group_by,
   cells = rownames(sample_metadata.to.archr),
   force = TRUE
 )
 
 # print cell numbers
 table(getCellColData(ArchRProject.filt,"Sample")[[1]])
-table(getCellColData(ArchRProject.filt,opts$group.by)[[1]])
+table(getCellColData(ArchRProject.filt,args$group_by)[[1]])
 
 #########################
 ## Add Group Coverages ##
 #########################
 
 # Check if group Coverages already exist
-ArchRProject.filt@projectMetadata$GroupCoverages
+# ArchRProject.filt@projectMetadata$GroupCoverages
 
 # This function will merge cells within each designated cell group for the generation of pseudo-bulk replicates 
 # and then merge these replicates into a single insertion coverage file.
 # Output: creates files in archR/GroupCoverages/celltype: [X]._.Rep[Y].insertions.coverage.h5
 ArchRProject.filt <- addGroupCoverages(ArchRProject.filt, 
-  groupBy = opts$group.by, 
-  force = TRUE, 
-  minCells = 50,
-  maxCells = 200,
+  groupBy = args$group_by, 
+  minCells = args$min_cells,
+  maxCells = args$max_cells,
+  force = TRUE
 )
 
 ##########

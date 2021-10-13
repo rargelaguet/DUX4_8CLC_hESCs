@@ -41,6 +41,7 @@ source(here::here("utils.R"))
 # Load cell metadata
 sample_metadata <- fread(args$metadata) %>%
   .[pass_rnaQC==TRUE & sample%in%opts$samples]
+stopifnot(args$group_by%in%colnames(sample_metadata))
 sample_metadata <- sample_metadata[!is.na(sample_metadata[[args$group_by]])]
 
 # Load SingleCellExperiment

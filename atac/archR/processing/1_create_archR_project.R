@@ -39,7 +39,7 @@ addArchRGenome(args$genome)
 ############################
 
 ArchRProject <- ArchRProject(
-  ArrowFiles = args$arrowFiles, 
+  ArrowFiles = args$arrow_files, 
   outputDirectory = args$outdir,
   copyArrows = FALSE
 )

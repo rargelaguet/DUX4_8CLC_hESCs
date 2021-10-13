@@ -11,16 +11,20 @@ here::i_am("atac/archR/processing/3_qc.R")
 p <- ArgumentParser(description='')
 p$add_argument('--metadata',    type="character",    help='metadata file')
 p$add_argument('--outdir',     type="character",    help='Output directory')
-p$add_argument('--min.TSSEnrichment',     type="integer",    default=8,   help='Minimum TSS enrichment')
-p$add_argument('--min.log_nFrags',     type="integer",    default=3000,    help='Maximum number of ATAC fragments')
-p$add_argument('--max.BlacklistRatio',     type="double",    default=0.05,    help='Maximum Blacklist Ratio')
+p$add_argument('--min_tss_enrichment',     type="integer",    default=8,   help='Minimum TSS enrichment')
+p$add_argument('--min_number_fragments',     type="integer",    default=3000,    help='Maximum number of ATAC fragments')
+p$add_argument('--max_blacklist_ratio',     type="double",    default=0.05,    help='Maximum Blacklist Ratio')
 p$add_argument('--threads',     type="integer",    default=1,    help='Number of threads')
 
 args <- p$parse_args(commandArgs(TRUE))
 
 ## START TEST ##
 # args$metadata <- "/Users/argelagr/data/DUX4_hESCs_multiome/processed/atac/archR/sample_metadata_after_archR.txt.gz"
-# args$outfile <- "/bi/group/reik/ricard/data/DUX4_hESCs_multiome/results/atac/archR/qc"
+# args$min_tss_enrichment <- 8
+# args$min_number_fragments <- 3000
+# args$max_blacklist_ratio <- 0.05
+# args$threads <- 2
+# args$outdir <- "/Users/argelagr/data/DUX4_hESCs_multiome/results/atac/archR/test/qc"
 ## END TEST ##
 
 #####################
@@ -31,8 +35,7 @@ source(here::here("settings.R"))
 
 # Options
 opts$chr <- paste0("chr",1:3)
-opts$test <- FALSE
-
+opts$test <- TRUE
 
 ########################
 ## Load cell metadata ##
@@ -52,7 +55,7 @@ addArchRThreads(threads=args$threads)
 ## Subset ArchR ##
 ##################
 
-if (args$test) {
+if (opts$test) {
   cells.to.use <- split(ArchRProject$cellNames,ArchRProject$sample) %>% map(~ head(.,n=100)) %>% unlist
   ArchRProject <- ArchRProject[cells.to.use,]
 }
@@ -65,7 +68,7 @@ tss.granges <- tss.granges[seqnames(tss.granges)%in%opts$chr]
 ## Plot TSS Enrichment ##
 #########################
 
-to.plot.tss <- opts$samples %>% map(function(i) {
+data_tss.dt <- opts$samples %>% map(function(i) {
   plotTSSEnrichment(
     ArchRProj = ArchRProject[ArchRProject$Sample==i,], 
     groupBy = "Sample", 
@@ -75,12 +78,16 @@ to.plot.tss <- opts$samples %>% map(function(i) {
 }) %>% rbindlist %>% 
   setnames("group","sample") %>% 
   melt(id.vars=c("sample","x"))
-fwrite(to.plot.tss, sprintf("%s/qc_TSSenrichment.txt.gz",args$outdir))
+fwrite(data_tss.dt, sprintf("%s/qc_TSSenrichment.txt.gz",args$outdir))
 
-to.plot.tss <- fread(sprintf("%s/qc_TSSenrichment.txt.gz",args$outdir)) %>% 
-  .[,.(value=mean(value)), by = c("sample","x","variable")]
+# data_tss.dt <- fread(sprintf("%s/qc_TSSenrichment.txt.gz",args$outdir)) %>% 
+#   .[,.(value=mean(value)), by = c("sample","x","variable")]
 
-p <- ggline(to.plot.tss[variable=="normValue"], x="x", y="value", plot_type="l") +
+to_plot_tss.dt <- data_tss.dt %>% 
+  .[,.(value=mean(value)), by = c("sample","x","variable")] %>%
+  .[variable=="normValue"]
+
+p <- ggline(to_plot_tss.dt, x="x", y="value", plot_type="l") +
   facet_wrap(~sample, scales="fixed", nrow=1) +
   # scale_colour_manual(values=opts$sample.colors) +
   # scale_x_continuous(breaks=seq(-2000,2000,1000)) +
@@ -104,7 +111,7 @@ dev.off()
 
 # to.plot.fragmentsize <- plotFragmentSizes(ArchRProject, groupBy = "Sample", returnDF=T) %>% 
 #   as.data.table %>% setnames("group","sample")
-to.plot.fragmentsize <- opts$samples %>% map(function(i) {
+data_fragmentsize.dt <- opts$samples %>% map(function(i) {
   plotFragmentSizes(
     ArchRProj = ArchRProject[ArchRProject$Sample==i,], 
     groupBy = "Sample", 
@@ -113,15 +120,15 @@ to.plot.fragmentsize <- opts$samples %>% map(function(i) {
 }) %>% rbindlist %>% 
   setnames("group","sample")
 
-fwrite(to.plot.fragmentsize, sprintf("%s/qc_FragmentSizeDistribution.txt.gz",args$outdir))
+fwrite(data_fragmentsize.dt, sprintf("%s/qc_FragmentSizeDistribution.txt.gz",args$outdir))
 
-# to.plot <- to.plot.fragmentsize %>% .[variable=="fragmentPercent"] %>% .[,fragmentSize:=1:.N,by="sample"] %>% setnames("value","fragmentPercent") %>% .[,variable:=NULL]
+# data_fragmentsize.dt <- fread(sprintf("%s/qc_FragmentSizeDistribution.txt.gz",args$outdir)) %>% 
+#   .[,.(fragmentPercent=mean(fragmentPercent)), by = c("sample","fragmentSize")]
 
-to.plot.fragmentsize <- fread(sprintf("%s/qc_FragmentSizeDistribution.txt.gz",args$outdir)) %>% 
+to_plot_fragmentsize.dt <- data_fragmentsize.dt %>% 
   .[,.(fragmentPercent=mean(fragmentPercent)), by = c("sample","fragmentSize")]
 
-# to.plot.fragmentsize2 <- to.plot.fragmentsize %>% dcast(sample~variable, value.var="value")
-p <- ggline(to.plot.fragmentsize, x="fragmentSize", y="fragmentPercent", plot_type="l") +
+p <- ggline(to_plot_fragmentsize.dt, x="fragmentSize", y="fragmentPercent", plot_type="l") +
   facet_wrap(~sample, scales="fixed", nrow=1) +
   scale_x_continuous(breaks=seq(125,750,125)) +
   # scale_colour_manual(values=opts$sample.colors) +
@@ -143,18 +150,18 @@ dev.off()
 
 to.plot <- sample_metadata %>%
   .[!is.na(nFrags_atac)] %>%
-  .[,log_nFrags:=log2(nFrags_atac)] %>%
-  # melt(id.vars=c("sample","cell"), measure.vars=c("TSSEnrichment_atac","log_nFrags","BlacklistRatio_atac"))
-  melt(id.vars=c("sample","cell"), measure.vars=c("TSSEnrichment_atac","log_nFrags"))
+  # .[,log_nFrags:=log2(nFrags_atac)] %>%
+  melt(id.vars=c("sample","cell"), measure.vars=c("TSSEnrichment_atac","nFrags_atac","BlacklistRatio_atac"))
+  # melt(id.vars=c("sample","cell"), measure.vars=c("TSSEnrichment_atac","nFrags_atac"))
 
-# tmp <- data.table(
-#   variable = c("TSSEnrichment_atac", "log_nFrags", "BlacklistRatio_atac"),
-#   value = c(args$min.TSSEnrichment, args$min.log_nFrags, args$max.BlacklistRatio)
-# )
 tmp <- data.table(
-  variable = c("TSSEnrichment_atac", "log_nFrags"),
-  value = c(args$min.TSSEnrichment, args$min.log_nFrags)
+  variable = c("TSSEnrichment_atac", "nFrags_atac", "BlacklistRatio_atac"),
+  value = c(args$min_tss_enrichment, args$min_number_fragments, args$max_blacklist_ratio)
 )
+# tmp <- data.table(
+#   variable = c("TSSEnrichment_atac", "nFrags_atac"),
+#   value = c(args$min_tss_enrichment, args$min_number_fragments)
+# )
 # p <- gghistogram(to.plot, x="value", fill="sample", bins=50) +
 p <- gghistogram(to.plot, x="value", y="..density..", bins=70, fill="sample") +
   geom_vline(aes(xintercept=value), linetype="dashed", data=tmp) +
@@ -162,7 +169,8 @@ p <- gghistogram(to.plot, x="value", y="..density..", bins=70, fill="sample") +
   theme(
     axis.text =  element_text(size=rel(0.8)),
     axis.title.x = element_blank(),
-    legend.position = "right",
+    legend.title = element_blank(),
+    legend.position = "top",
     legend.text = element_text(size=rel(0.5))
   )
 pdf(sprintf("%s/qc_metrics_histogram.pdf",args$outdir), width=8, height=5)
@@ -175,14 +183,14 @@ dev.off()
 #############
 
 sample_metadata %>%
-  .[,pass_atacQC:=TSSEnrichment_atac>=args$min.TSSEnrichment & log2(nFrags_atac)>=args$min.log_nFrags & BlacklistRatio_atac<=args$max.BlacklistRatio] %>%
+  .[,pass_atacQC:=TSSEnrichment_atac>=args$min_tss_enrichment & nFrags_atac>=args$min_number_fragments & BlacklistRatio_atac<=args$max_blacklist_ratio] %>%
   .[is.na(pass_atacQC),pass_atacQC:=FALSE]
 
 print(sample_metadata[,mean(pass_atacQC,na.rm=T),by="sample"])
 # print(sample_metadata[,mean(is.na(nFrags_atac)),by="sample"])
 
 # Save
-fwrite(sample_metadata, paste0(args$outdir,"/sample_metadata_after_qc.txt.gz"), quote=F, na="NA", sep="\t")
+fwrite(sample_metadata, file.path(args$outdir,"sample_metadata_after_qc.txt.gz"), quote=F, na="NA", sep="\t")
 
 
 ###########################################
@@ -194,12 +202,17 @@ fwrite(sample_metadata, paste0(args$outdir,"/sample_metadata_after_qc.txt.gz"), 
 to.plot <- sample_metadata %>%
   .[,mean(pass_atacQC),by="sample"]
 
-p <- ggbarplot(to.plot, x="sample", y="V1", fill="gray70") +
-    labs(x="", y="Fraction of cells that pass QC") +
+p <- ggbarplot(to.plot, x="sample", y="V1", fill="sample") +
+  labs(x="", y="Fraction of cells that pass QC") +
   coord_cartesian(ylim=c(0,1)) +
-    theme(
-        axis.text.x = element_text(colour="black",size=rel(0.65), angle=20, hjust=1, vjust=1),  
-    )
+  theme(
+    legend.title = element_blank(),
+    legend.position = "top",
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    # axis.text.x = element_text(colour="black",size=rel(0.65), angle=20, hjust=1, vjust=1),  
+    axis.text.y =  element_text(size=rel(0.8))
+  )
 
 # pdf(sprintf("%s/qc_metrics_barplot.pdf",args$outdir), width=9, height=7)
 pdf(sprintf("%s/qc_metrics_barplot.pdf",args$outdir))
