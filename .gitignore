@@ -5,6 +5,8 @@
 *.out
 *.err
 *.snakemake
-snakemake/logs
+snakemake/logs/
+snakemake_archr/logs/
 *.pdf
 .Rproj.user
+.gitignore
