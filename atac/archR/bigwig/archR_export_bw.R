@@ -2,6 +2,30 @@
 
 here::i_am("atac/archR/bigwig/archR_export_bw.R")
 
+suppressPackageStartupMessages(library(ArchR))
+suppressPackageStartupMessages(library(argparse))
+
+######################
+## Define arguments ##
+######################
+
+p <- ArgumentParser(description='')
+p$add_argument('--metadata',    type="character",    help='metadata file')
+p$add_argument('--group_by',     type="character",    help='Metadata column to group by')
+p$add_argument('--norm_method',     type="character", default="ReadsInTSS",    help='Normalisation method')
+p$add_argument('--tile_size',     type="integer", default=100,    help='Tile size')
+p$add_argument('--threads',     type="integer",    default=1,    help='Number of threads')
+
+args <- p$parse_args(commandArgs(TRUE))
+
+## START TEST ##
+# args$metadata <- "/bi/group/reik/ricard/data/DUX4_hESCs_multiome/results/atac/archR/test/qc/sample_metadata_after_qc.txt.gz"
+# args$group_by <- "cluster"
+# args$norm_method <- c("ReadsInTSS")
+# args$tile_size <- 100
+# args$threads <- 1
+## END TEST ##
+
 #####################
 ## Define settings ##
 #####################
@@ -9,20 +33,14 @@ here::i_am("atac/archR/bigwig/archR_export_bw.R")
 source(here::here("settings.R"))
 source(here::here("utils.R"))
 
-# I/O
-# io$metadata <- file.path(io$basedir,"/results/rna/dimensionality_reduction/sample_metadata_after_clustering.txt.gz")
-
-# Options
-opts$group.by <- "eight_cell_like_ricard"
-opts$ncores <- 2
-
 ########################
 ## Load cell metadata ##
 ########################
 
-sample_metadata <- fread(io$metadata) %>%
-  .[pass_atacQC==TRUE & !is.na(eight_cell_like_ricard)] %>%
-  .[sample%in%opts$samples]
+sample_metadata <- fread(args$metadata) %>%
+  .[pass_atacQC==TRUE & sample%in%opts$samples]
+stopifnot(args$group_by%in%colnames(sample_metadata))
+sample_metadata <- sample_metadata[!is.na(sample_metadata[[args$group_by]])]
 
 ########################
 ## Load ArchR project ##
@@ -30,14 +48,10 @@ sample_metadata <- fread(io$metadata) %>%
 
 source(here::here("atac/archR/load_archR_project.R"))
 
-addArchRThreads(threads = opts$ncores)
+addArchRThreads(threads = args$threads)
 
-##################
-## Subset ArchR ##
-##################
-
+# Subset
 ArchRProject.filt <- ArchRProject[sample_metadata$cell]
-table(getCellColData(ArchRProject.filt,"Sample")[[1]])
 
 ###########################
 ## Update ArchR metadata ##
@@ -50,17 +64,14 @@ sample_metadata.to.archr <- sample_metadata %>%
 stopifnot(all(rownames(sample_metadata.to.archr) == rownames(getCellColData(ArchRProject.filt))))
 ArchRProject.filt <- addCellColData(
   ArchRProject.filt,
-  data = sample_metadata.to.archr[[opts$group.by]],
-  name = opts$group.by,
+  data = sample_metadata.to.archr[[args$group_by]],
+  name = args$group_by,
   cells = rownames(sample_metadata.to.archr),
   force = TRUE
 )
 
-stopifnot(opts$group.by %in% names(ArchRProject.filt@projectMetadata$GroupCoverages))
-
 # print cell numbers
-table(getCellColData(ArchRProject.filt,"Sample")[[1]])
-table(getCellColData(ArchRProject.filt,opts$group.by)[[1]])
+table(getCellColData(ArchRProject.filt,args$group_by)[[1]])
 
 
 ###################
@@ -70,10 +81,13 @@ table(getCellColData(ArchRProject.filt,opts$group.by)[[1]])
 # This function will group, summarize and export a bigwig for each group in an ArchRProject.
 getGroupBW(
   ArchRProj = ArchRProject.filt,
-  groupBy = opts$group.by,
+  groupBy = args$group_by,
   # groupBy = "Sample",
-  normMethod = "ReadsInTSS",
-  tileSize = 100,
-  maxCells = 100,
+  normMethod = args$norm_method,
+  tileSize = args$tile_size,
+  # maxCells = 100,
   ceiling = 4
 )
+
+# Create a completion token
+file.create(file.path(io$archR.directory,sprintf("/GroupBigWigs/%s/completed.txt",args$group_by)))

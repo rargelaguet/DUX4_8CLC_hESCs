@@ -63,7 +63,8 @@ addGeneScoreMatrix(
   tileSize = 500,                     # The size of the tiles used for binning counts prior to gene activity score calculation.
   geneScaleFactor = 5,                # A numeric scaling factor to weight genes based on the inverse of their length 
   scaleTo = 10000,                    # Each column in the calculated gene score matrix will be normalized
-  excludeChr = c("chrY", "chrM")
+  excludeChr = c("chrY", "chrM"),
+  force = TRUE
 )
 
 # Save

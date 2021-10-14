@@ -87,7 +87,8 @@ table(getCellColData(ArchRProject.filt,args$group_by)[[1]])
 # and then merge these replicates into a single insertion coverage file.
 # Output: creates files in archR/GroupCoverages/celltype: [X]._.Rep[Y].insertions.coverage.h5
 ArchRProject.filt <- addGroupCoverages(ArchRProject.filt, 
-  groupBy = args$group_by, 
+  groupBy = args$group_by,
+  useLabels = FALSE,  # do not use sample information
   minCells = args$min_cells,
   maxCells = args$max_cells,
   force = TRUE

@@ -31,11 +31,12 @@ rule all:
         # config["directories"]["processed_data"]+"/sample_metadata_after_archR.txt.gz"
         # config["directories"]["results"]+"/sample_metadata_after_qc.txt.gz"
         # config["directories"]["processed_data"]+"/projectMetadata.rds"
-        config["directories"]["processed_data"]+"/PeakCalls/PeakSet.rds",
-        config["directories"]["processed_data"]+"/PeakCalls/peak_metadata.tsv.gz",
-        config["directories"]["processed_data"]+"/PeakCalls/peaks_archR_macs2.bed.gz",
-        config["directories"]["results"]+"/gene_scores/GeneScoreMatrix_distal.rds",
-        config["directories"]["results"]+"/gene_scores/GeneScoreMatrix_tss.rds"
+        # config["directories"]["processed_data"]+"/PeakCalls/PeakSet.rds",
+        # config["directories"]["processed_data"]+"/PeakCalls/peak_metadata.tsv.gz",
+        # config["directories"]["processed_data"]+"/PeakCalls/peaks_archR_macs2.bed.gz",
+        # config["directories"]["results"]+"/gene_scores/GeneScoreMatrix_distal.rds",
+        # config["directories"]["results"]+"/gene_scores/GeneScoreMatrix_tss.rds"
+        expand(config["directories"]["processed_data"]+"/GroupBigWigs/{group_by}/completed.txt", group_by=config["create_bigwigs"]["group_by"])
 
 ########################
 ## Create arrow files ##
@@ -212,3 +213,23 @@ rule add_gene_scores:
         "logs/gene_scores.log"
     shell:
         "Rscript {input.script}  --metadata {input.metadata} --outdir {params.outdir} > {log}"
+
+####################
+## Create bigwigs ##
+####################
+
+rule create_bigwigs:
+    input:
+        script = config["scripts"]["create_bigwigs"],
+        metadata = rules.create_archr_metadata.output
+    output:
+        config["directories"]["processed_data"]+"/GroupBigWigs/{group_by}/completed.txt",
+    params:
+        # group_by = config["pseudobulk_add_group_coverage"]["group_by"],
+        norm_method = config["create_bigwigs"]["norm_method"],
+        tile_size = config["create_bigwigs"]["tile_size"]
+    threads: 1
+    log: 
+        "logs/create_bigwigs_{group_by}.log"
+    shell:
+        "Rscript {input.script}  --metadata {input.metadata} --tile_size {params.tile_size} --norm_method {params.norm_method} --group_by {wildcards.group_by} > {log}"

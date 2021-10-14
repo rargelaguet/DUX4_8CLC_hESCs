@@ -19,10 +19,10 @@ p$add_argument('--threads',     type="integer",    default=1,    help='Number of
 args <- p$parse_args(commandArgs(TRUE))
 
 ## START TEST ##
-args$metadata <- "/bi/group/reik/ricard/data/DUX4_hESCs_multiome/results/atac/archR/qc/sample_metadata_after_qc.txt.gz"
-args$group_by <- "cluster"
-args$matrices_to_pseudobulk <- c("PeakMatrix", "GeneScoreMatrix_distal", "GeneScoreMatrix_TSS")
-args$threads <- 1
+# args$metadata <- "/bi/group/reik/ricard/data/DUX4_hESCs_multiome/results/atac/archR/qc/sample_metadata_after_qc.txt.gz"
+# args$group_by <- "cluster"
+# args$matrices_to_pseudobulk <- c("PeakMatrix", "GeneScoreMatrix_distal", "GeneScoreMatrix_TSS")
+# args$threads <- 1
 ## END TEST ##
 
 #####################

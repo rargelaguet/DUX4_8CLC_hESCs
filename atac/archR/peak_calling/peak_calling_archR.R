@@ -85,6 +85,8 @@ table(getCellColData(ArchRProject.filt,args$group_by)[[1]])
 ## Peak calling ##
 ##################
 
+# TO-DO: DO NOT SPLIT GROUP PER SAMPLE??
+
 ArchRProject.filt <- addReproduciblePeakSet(
   ArchRProj = ArchRProject.filt, 
   groupBy = args$group_by, 

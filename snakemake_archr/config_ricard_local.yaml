@@ -31,6 +31,8 @@ scripts:
     dimensionality_reduction: ../atac/archR/dimensionality_reduction/automated/archR_dimensionality_reduction.R
     peak_calling: ../atac/archR/peak_calling/peak_calling_archR.R
     gene_scores: ../atac/archR/gene_scores/add_GeneScore_matrices.R
+    create_bigwigs: ../atac/archR/bigwig/archR_export_bw.R
+
 
 ################
 ## Parameters ##
@@ -66,6 +68,11 @@ peak_calling:
     pvalue_cutoff: 0.001
     extend_summits: 300
 
+create_bigwigs:
+    group_by: "cluster"
+    norm_method: "ReadsInTSS"
+    tile_size: 100
+
 ###########
 ## Slurm ##
 ###########
@@ -90,5 +97,8 @@ slurm:  # memory in GB
         cores: 1
         memory: 10
     gene_scores:
+        cores: 1
+        memory: 10
+    create_bigwigs:
         cores: 1
         memory: 10
