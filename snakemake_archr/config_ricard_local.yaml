@@ -32,6 +32,7 @@ scripts:
     peak_calling: ../atac/archR/peak_calling/peak_calling_archR.R
     gene_scores: ../atac/archR/gene_scores/add_GeneScore_matrices.R
     create_bigwigs: ../atac/archR/bigwig/archR_export_bw.R
+    add_motif_annotation: ../atac/archR/add_motif_annotation/archR_add_motif_annotation.R
 
 
 ################
@@ -43,7 +44,6 @@ create_arrow_files:
     min_fragments: 1000
     max_fragments: 1000000
     min_tss_score: 2.5
-    threads: 2
 
 create_archr_project:
     genome: "hg38"
@@ -55,7 +55,6 @@ qc_archr:
     min_tss_enrichment: 8
     min_number_fragments: 3000
     max_blacklist_ratio: 0.05
-    threads: 2
 
 pseudobulk_add_group_coverage:
     group_by: "cluster"
@@ -73,32 +72,37 @@ create_bigwigs:
     norm_method: "ReadsInTSS"
     tile_size: 100
 
+# add_motif_annotation:
+
 ###########
 ## Slurm ##
 ###########
 
 slurm:  # memory in GB
     create_arrow_files: 
-        cores: 2
+        threads: 1
         memory: 10
     create_archr_project:
-        cores: 1
+        threads: 1
         memory: 10
     create_archr_metadata:
-        cores: 1
+        threads: 1
         memory: 10
     qc_archr: 
-        cores: 1
+        threads: 1
         memory: 10
     pseudobulk_add_group_coverage:
-        cores: 1
+        threads: 1
         memory: 10
     peak_calling:
-        cores: 1
+        threads: 1
         memory: 10
     gene_scores:
-        cores: 1
+        threads: 1
         memory: 10
     create_bigwigs:
-        cores: 1
+        threads: 1
+        memory: 10
+    add_motif_annotation:
+        threads: 1
         memory: 10

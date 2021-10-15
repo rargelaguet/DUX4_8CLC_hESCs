@@ -47,7 +47,7 @@ ArchRProject <- addMotifAnnotations(
   name = "Motif_cisbp",
   cutOff = 5e-05,
   width = 7,
-  force = TRUE
+  force = FALSE
 )
 
 # cisbp (lenient threshold)
@@ -78,7 +78,7 @@ ArchRProject <- addMotifAnnotations(
   species = "Homo sapiens",
   cutOff = 5e-05,   
   name = "Motif_JASPAR2020",
-  force = TRUE
+  force = FALSE
 )
 
 # JASPAR2020 human (lenient)

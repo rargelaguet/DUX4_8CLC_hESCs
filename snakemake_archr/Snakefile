@@ -38,6 +38,13 @@ rule all:
         # config["directories"]["results"]+"/gene_scores/GeneScoreMatrix_tss.rds"
         # expand(config["directories"]["processed_data"]+"/GroupBigWigs/{group_by}/completed.txt", group_by=config["create_bigwigs"]["group_by"])
         config["directories"]["processed_data"]+"/Annotations/peakAnnotation.rds"
+        expand("%s/dimensionality_reduction/umap_features{features}_pcs{npcs}_neigh{n_neighbors}_dist{min_dist}-{colour_by}.pdf" % (config["directories"]["results"]), 
+            features = config["dimensionality_reduction"]["features"], 
+            npcs = config["dimensionality_reduction"]["npcs"], 
+            n_neighbors = config["dimensionality_reduction"]["n_neighbors"], 
+            min_dist = config["dimensionality_reduction"]["min_dist"], 
+            colour_by = config["dimensionality_reduction"]["colour_by"]
+            )
 
 ########################
 ## Create arrow files ##
@@ -250,6 +257,42 @@ rule create_bigwigs:
 ##############################
 ## Dimensionality reduction ##
 ##############################
+
+rule dimensionality_reduction: 
+    input:
+        script=config["scripts"]["dimensionality_reduction"],
+        sce=config["directories"]["processed_data"]+"/SingleCellExperiment.rds",
+        metadata=rules.clustering_seurat.output.metadata
+        # metadata=rules.parse_doublet_results.output.metadata
+    output:
+        # config["directories"]["results"]+"/rna/dimensionality_reduction/umap_nfeatures{dimred_ndims}_ndims{dimred_ndims}_neigh{umap_n_neighbors}_dist{umap_min_dist}-{dimred_colour_by}.pdf"
+        # outfile <- sprintf("%s/%s_umap_nfeatures%d_ndims%d_neigh%d_dist%s.txt.gz",args$outdir, paste(args$samples,collapse="-"), args$nfeatures, args$ndims, i, j)
+    conda:
+        "environment.yaml"
+    log: 
+        "logs/umap_nfeatures{dimred_nfeatures}_ndims{dimred_ndims}_neigh{umap_n_neighbors}_dist{umap_min_dist}.log"
+    params:
+        seed = 42,
+        # outdir = 
+        memory=config["slurm"]["dimensionality_reduction"]["memory"]
+
+    shell:
+        "Rscript {input.script} --matrix {wildcards.dimred_matrix} --metadata {input.metadata} --ndims {wildcards.dimred_ndims} --nfeatures {wildcards.dimred_nfeatures} \
+            --n_neighbors {wildcards.umap_n_neighbors} --min_dist {wildcards.umap_min_dist} --colour_by {wildcards.dimred_colour_by} \
+            -seed {params.seed} --outdir {params.outdir} > {log}"
+
+p <- ArgumentParser(description='')
+p$add_argument('--metadata',        type="character",                               help='Cell metadata file')
+p$add_argument('--ndims',           type="integer",    default=30,                  help='Number of LSI dimensions')
+p$add_argument('--batch.variable',  type="character",                               help='Metadata column to apply batch correction on')
+p$add_argument('--batch.method',    type="character",  default="MNN",               help='Batch correctin method ("Harmony" or "MNN")')
+p$add_argument('--matrix',          type="character",  default="PeakMatrix",   help='Matrix to use')
+p$add_argument('--n_neighbors',     type="integer",    default=30,   nargs='+',     help='(UMAP) Number of neighbours')
+p$add_argument('--min_dist',        type="double",     default=0.3,  nargs='+',     help='(UMAP) Minimum distance')
+p$add_argument('--colour_by',       type="character",  default="celltype.predicted",  nargs='+',  help='Metadata columns to colour the UMAP by')
+p$add_argument('--seed',            type="integer",    default=42,                  help='Random seed')
+p$add_argument('--outdir',          type="character",                               help='Output directory')
+
 
 ##################
 ## Differential ##

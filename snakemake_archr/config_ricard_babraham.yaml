@@ -32,6 +32,8 @@ scripts:
     peak_calling: ../atac/archR/peak_calling/peak_calling_archR.R
     gene_scores: ../atac/archR/gene_scores/add_GeneScore_matrices.R
     create_bigwigs: ../atac/archR/bigwig/archR_export_bw.R
+    add_motif_annotation: ../atac/archR/add_motif_annotation/archR_add_motif_annotation.R
+
 
 
 ################
@@ -77,6 +79,8 @@ create_bigwigs:
     tile_size: 100
     # threads: 2
 
+# add_motif_annotation:
+
 ###########
 ## Slurm ##
 ###########
@@ -104,5 +108,8 @@ slurm:  # memory in GB
         threads: 1
         memory: 10
     create_bigwigs:
+        threads: 1
+        memory: 10
+    add_motif_annotation:
         threads: 1
         memory: 10
