@@ -1,8 +1,32 @@
+# https://www.archrproject.com/bookdown/calculating-gene-scores-in-archr.html
+
+suppressPackageStartupMessages(library(ArchR))
+suppressPackageStartupMessages(library(argparse))
+
+here::i_am("atac/archR/gene_scores/add_GeneScore_matrices.R")
+
+######################
+## Define arguments ##
+######################
+
+p <- ArgumentParser(description='')
+p$add_argument('--metadata',    type="character",    help='metadata file')
+# p$add_argument('--outdir',    type="character",    help='Output directory')
+p$add_argument('--threads',     type="integer",    default=1,    help='Number of threads')
+
+args <- p$parse_args(commandArgs(TRUE))
+
+## START TEST ##
+# args$metadata <- "/bi/group/reik/ricard/data/DUX4_hESCs_multiome/results/atac/archR/qc/sample_metadata_after_qc.txt.gz"
+# args$threads <- 1
+## END TEST ##
+
 #####################
 ## Define settings ##
 #####################
 
 source(here::here("settings.R"))
+source(here::here("utils.R"))
 
 ########################
 ## Load ArchR Project ##
@@ -10,13 +34,7 @@ source(here::here("settings.R"))
 
 source(here::here("atac/archR/load_archR_project.R"))
 
-#####################
-## Define settings ##
-#####################
-
-# I/O
-# io$metadata <- paste0(io$basedir,"/processed/atac/archR/sample_metadata_after_archR.txt.gz")
-# io$outdir <- paste0(io$basedir,"/results/atac/archR/motif_annotations")
+addArchRThreads(threads = args$threads)
 
 ##########################
 ## Add motif annotation ##
@@ -26,7 +44,6 @@ source(here::here("atac/archR/load_archR_project.R"))
 ArchRProject <- addMotifAnnotations(
   ArchRProject,
   motifSet = "cisbp",
-  cutOff = 5e-05,
   name = "Motif_cisbp",
   cutOff = 5e-05,
   width = 7,
@@ -34,14 +51,14 @@ ArchRProject <- addMotifAnnotations(
 )
 
 # cisbp (lenient threshold)
-ArchRProject <- addMotifAnnotations(
-  ArchRProject,
-  motifSet = "cisbp",
-  name = "Motif_cisbp_lenient",
-  cutOff = 1e-04,
-  width = 7,
-  force = TRUE
-)
+# ArchRProject <- addMotifAnnotations(
+#   ArchRProject,
+#   motifSet = "cisbp",
+#   name = "Motif_cisbp_lenient",
+#   cutOff = 1e-04,
+#   width = 7,
+#   force = TRUE
+# )
 
 # homer
 # ArchRProject <- addMotifAnnotations(
@@ -53,61 +70,31 @@ ArchRProject <- addMotifAnnotations(
 # )
 
 
-# JASPAR2018 human
-# ArchRProject <- addMotifAnnotations(
-#   ArchRProject, 
-#   motifSet = "JASPAR2018",      
-#   collection = "CORE",  
-#   species = "Homo sapiens",
-#   cutOff = opts$motif.pvalue.cutoff,   
-#   name = "Motif_JASPAR2018_human",
-#   force = TRUE
-# )
-
-# JASPAR2018 mouse
-# ArchRProject <- addMotifAnnotations(
-#   ArchRProject, 
-#   motifSet = "JASPAR2018",      
-#   collection = "CORE",  
-#   species = "Mus musculus",
-#   cutOff = opts$motif.pvalue.cutoff,   
-#   name = "Motif_JASPAR2018_human",
-#   force = TRUE
-# )
-
-# JASPAR2020 human
+# JASPAR2020 human (stringent)
 ArchRProject <- addMotifAnnotations(
   ArchRProject, 
   motifSet = "JASPAR2020",      
   collection = "CORE",  
   species = "Homo sapiens",
   cutOff = 5e-05,   
-  name = "Motif_JASPAR2020_human",
+  name = "Motif_JASPAR2020",
   force = TRUE
 )
 
-# JASPAR2020 mouse
+# JASPAR2020 human (lenient)
 # ArchRProject <- addMotifAnnotations(
 #   ArchRProject, 
 #   motifSet = "JASPAR2020",      
 #   collection = "CORE",  
-#   species = "Mus musculus",
-#   cutOff = opts$motif.pvalue.cutoff,   
-#   name = "Motif_JASPAR2020_mouse",
+#   species = "Homo sapiens",
+#   cutOff = 1e-04,   
+#   name = "Motif_JASPAR2020_lenient",
 #   force = TRUE
 # )
+
 
 ################################
 ## Save peakAnnotation object ##
 ################################
 
 saveRDS(ArchRProject@peakAnnotation, sprintf("%s/Annotations/peakAnnotation.rds",io$archR.directory))
-
-#############
-## Explore ##
-#############
-
-# Motif_cisbp <- ArchRProject@peakAnnotation[["Motif_cisbp"]][["motifSummary"]]
-# Motif_JASPAR2020_human <- ArchRProject@peakAnnotation[["Motif_JASPAR2020_human"]][["motifSummary"]]
-# Motif_JASPAR2020_mouse <- ArchRProject@peakAnnotation[["Motif_JASPAR2020_mouse"]][["motifSummary"]]
-# Motif_homer <- ArchRProject@peakAnnotation[["Motif_homer"]][["motifSummary"]]

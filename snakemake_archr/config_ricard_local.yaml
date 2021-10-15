@@ -10,8 +10,8 @@ samples:
 directories:
     base: /Users/argelagr/data/DUX4_hESCs_multiome
     original_data: /Users/argelagr/data/DUX4_hESCs_multiome/original
-    processed_data: /Users/argelagr/data/DUX4_hESCs_multiome/processed/atac/archR/test
-    results: /Users/argelagr/data/DUX4_hESCs_multiome/results/atac/archR/test
+    processed_data: /Users/argelagr/data/DUX4_hESCs_multiome/processed/atac/archR
+    results: /Users/argelagr/data/DUX4_hESCs_multiome/results/atac/archR
 
 files:
     rna_metadata: /Users/argelagr/data/DUX4_hESCs_multiome/results/rna/clustering/sample_metadata_after_clustering.txt.gz

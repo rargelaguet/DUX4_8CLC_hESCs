@@ -10,8 +10,8 @@ samples:
 directories:
     base: /bi/group/reik/ricard/data/DUX4_hESCs_multiome
     original_data: /bi/group/reik/ricard/data/DUX4_hESCs_multiome/original
-    processed_data: /bi/group/reik/ricard/data/DUX4_hESCs_multiome/processed/atac/archR/test
-    results: /bi/group/reik/ricard/data/DUX4_hESCs_multiome/results/atac/archR/test
+    processed_data: /bi/group/reik/ricard/data/DUX4_hESCs_multiome/processed/atac/archR
+    results: /bi/group/reik/ricard/data/DUX4_hESCs_multiome/results/atac/archR
 
 files:
     rna_metadata: /bi/group/reik/ricard/data/DUX4_hESCs_multiome/results/rna/clustering/sample_metadata_after_clustering.txt.gz
@@ -43,7 +43,7 @@ create_arrow_files:
     min_fragments: 1000
     max_fragments: 1000000
     min_tss_score: 2.5
-    threads: 2
+    # threads: 2
 
 create_archr_project:
     genome: "hg38"
@@ -55,23 +55,27 @@ qc_archr:
     min_tss_enrichment: 8
     min_number_fragments: 3000
     max_blacklist_ratio: 0.05
-    threads: 2
+    # threads: 2
 
 pseudobulk_add_group_coverage:
     group_by: "cluster"
     min_cells: 25
     max_cells: 100
+    # threads: 2
 
 peak_calling:
     group_by: "cluster"
     pathToMacs2: "/bi/group/reik/ricard/software/miniconda3/envs/main/bin/macs2"
     pvalue_cutoff: 0.001
     extend_summits: 300
+    # threads: 2
 
 create_bigwigs:
+    # group_by: ["cluster", "sample"]
     group_by: "cluster"
     norm_method: "ReadsInTSS"
     tile_size: 100
+    # threads: 2
 
 ###########
 ## Slurm ##
@@ -79,26 +83,26 @@ create_bigwigs:
 
 slurm:  # memory in GB
     create_arrow_files: 
-        cores: 2
+        threads: 1
         memory: 10
     create_archr_project:
-        cores: 1
+        threads: 1
         memory: 10
     create_archr_metadata:
-        cores: 1
+        threads: 1
         memory: 10
     qc_archr: 
-        cores: 1
+        threads: 1
         memory: 10
     pseudobulk_add_group_coverage:
-        cores: 1
+        threads: 1
         memory: 10
     peak_calling:
-        cores: 1
+        threads: 1
         memory: 10
     gene_scores:
-        cores: 1
+        threads: 1
         memory: 10
     create_bigwigs:
-        cores: 1
+        threads: 1
         memory: 10
