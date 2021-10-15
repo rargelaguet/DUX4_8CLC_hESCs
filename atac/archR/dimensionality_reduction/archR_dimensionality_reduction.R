@@ -9,12 +9,12 @@ here::i_am("atac/archR/dimensionality_reduction/automated/archR_dimensionality_r
 
 p <- ArgumentParser(description='')
 p$add_argument('--metadata',        type="character",                               help='Cell metadata file')
+p$add_argument('--matrix',          type="character",  default="PeakMatrix",   help='Matrix to use')
 # p$add_argument('--samples',         type="character",                nargs='+',     help='Samples')
 p$add_argument('--nfeatures',       type="integer",    default=1000,               help='Number of features')
 p$add_argument('--ndims',           type="integer",    default=30,                  help='Number of LSI dimensions')
 p$add_argument('--batch.variable',  type="character",                               help='Metadata column to apply batch correction on')
 p$add_argument('--batch.method',    type="character",  default="MNN",               help='Batch correctin method ("Harmony" or "MNN")')
-p$add_argument('--matrix',          type="character",  default="PeakMatrix",   help='Matrix to use')
 p$add_argument('--n_neighbors',     type="integer",    default=30,   nargs='+',     help='(UMAP) Number of neighbours')
 p$add_argument('--min_dist',        type="double",     default=0.3,  nargs='+',     help='(UMAP) Minimum distance')
 p$add_argument('--colour_by',       type="character",  nargs='+',  help='Metadata columns to colour the UMAP by')
@@ -32,18 +32,18 @@ source(here::here("utils.R"))
 
 
 ## START TEST ##
-args <- list()
+# args <- list()
 # args$metadata <- file.path(io$basedir,"results/atac/archR/qc/sample_metadata_after_qc.txt.gz")
-args$metadata <- io$metadata
-args$samples <- opts$samples
-args$nfeatures <- 15000
-args$matrix <- "PeakMatrix"
-args$ndims <- 25
-args$seed <- 42
-args$n_neighbors <- 25
-args$min_dist <- 0.3
-args$colour_by <- c("sample","log_nFrags_atac","eight_cell_like_ricard")
-args$outdir <- file.path(io$basedir,"results/atac/archR/dimensionality_reduction")
+# args$metadata <- io$metadata
+# args$samples <- opts$samples
+# args$nfeatures <- 15000
+# args$matrix <- "PeakMatrix"
+# args$ndims <- 25
+# args$seed <- 42
+# args$n_neighbors <- 25
+# args$min_dist <- 0.3
+# args$colour_by <- c("sample","log_nFrags_atac","eight_cell_like_ricard")
+# args$outdir <- file.path(io$basedir,"results/atac/archR/dimensionality_reduction")
 ## END TEST ##
 
 # I/O
@@ -281,14 +281,14 @@ for (i in args$n_neighbors) {
       # }
       
       # Save UMAP plot
-      outfile <- sprintf("%s/umap_nfeatures%d_ndims%d_neigh%d_dist%s_%s.pdf",args$outdir, args$nfeatures, args$ndims, i, j, k)
+      outfile <- sprintf("%s/umap_%s_nfeatures%d_ndims%d_neigh%d_dist%s_%s.pdf",args$outdir, args$matrix, args$nfeatures, args$ndims, i, j, k)
       pdf(outfile, width=7, height=5)
       print(p)
       dev.off()
     }
     
     # Save UMAP coordinates
-    outfile <- sprintf("%s/umap_nfeatures%d_ndims%d_neigh%d_dist%s.txt.gz",args$outdir, args$nfeatures, args$ndims, i, j)
+    outfile <- sprintf("%s/umap_%s_nfeatures%d_ndims%d_neigh%d_dist%s.txt.gz",args$outdir, args$matrix, args$nfeatures, args$ndims, i, j)
     fwrite(umap.dt, outfile)
   }
 }

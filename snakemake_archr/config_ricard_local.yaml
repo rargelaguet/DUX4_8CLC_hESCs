@@ -33,7 +33,7 @@ scripts:
     gene_scores: ../atac/archR/gene_scores/add_GeneScore_matrices.R
     create_bigwigs: ../atac/archR/bigwig/archR_export_bw.R
     add_motif_annotation: ../atac/archR/add_motif_annotation/archR_add_motif_annotation.R
-
+    dimensionality_reduction: ../atac/archR/dimensionality_reduction/archR_dimensionality_reduction.R
 
 ################
 ## Parameters ##
@@ -74,6 +74,14 @@ create_bigwigs:
 
 # add_motif_annotation:
 
+dimensionality_reduction:
+    dimred_matrix: "PeakMatrix"
+    dimred_ndims: 30
+    dimred_nfeatures: 5000
+    umap_n_neighbors: 25
+    umap_min_dist: 0.3
+    colour_by: ["sample", "cluster"]
+
 ###########
 ## Slurm ##
 ###########
@@ -104,5 +112,8 @@ slurm:  # memory in GB
         threads: 1
         memory: 10
     add_motif_annotation:
+        threads: 1
+        memory: 10
+    dimensionality_reduction:
         threads: 1
         memory: 10
