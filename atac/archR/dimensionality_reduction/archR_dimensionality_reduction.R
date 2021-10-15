@@ -1,7 +1,7 @@
 suppressPackageStartupMessages(library(argparse))
 suppressPackageStartupMessages(library(ArchR))
 
-here::i_am("atac/archR/dimensionality_reduction/automated/archR_dimensionality_reduction.R")
+here::i_am("atac/archR/dimensionality_reduction/archR_dimensionality_reduction.R")
 
 ######################
 ## Define arguments ##
@@ -23,31 +23,26 @@ p$add_argument('--outdir',          type="character",                           
 
 args <- p$parse_args(commandArgs(TRUE))
 
-#####################
-## Define settings ##
-#####################
-
-source(here::here("settings.R"))
-source(here::here("utils.R"))
-
-
 ## START TEST ##
 # args <- list()
-# args$metadata <- file.path(io$basedir,"results/atac/archR/qc/sample_metadata_after_qc.txt.gz")
-# args$metadata <- io$metadata
-# args$samples <- opts$samples
+# args$metadata <- "/bi/group/reik/ricard/data/DUX4_hESCs_multiome/results/atac/archR/qc/sample_metadata_after_qc.txt.gz"
 # args$nfeatures <- 15000
 # args$matrix <- "PeakMatrix"
 # args$ndims <- 25
 # args$seed <- 42
 # args$n_neighbors <- 25
 # args$min_dist <- 0.3
-# args$colour_by <- c("sample","log_nFrags_atac","eight_cell_like_ricard")
-# args$outdir <- file.path(io$basedir,"results/atac/archR/dimensionality_reduction")
+# args$colour_by <- c("sample","cluster")
+# args$outdir <- "/bi/group/reik/ricard/data/DUX4_hESCs_multiome/results/atac/archR/dimensionality_reduction"
 ## END TEST ##
 
-# I/O
-# io$pdfdir <- sprintf("%s/pdf",args$outdir); dir.create(io$pdfdir,showWarnings = F)
+
+#####################
+## Define settings ##
+#####################
+
+source(here::here("settings.R"))
+source(here::here("utils.R"))
 
 # Options
 opts$lsi.iterations = 2
@@ -61,8 +56,6 @@ sample_metadata <- fread(args$metadata) %>%
   # .[pass_atacQC==TRUE & doublet_call==FALSE & sample%in%args$samples] %>%
   .[pass_atacQC==TRUE & sample%in%opts$samples] %>%
   .[,log_nFrags_atac:=log10(nFrags_atac)]
-
-table(sample_metadata$sample)
 
 ########################
 ## Load ArchR project ##
@@ -78,6 +71,7 @@ ArchRProject.filt <- ArchRProject[sample_metadata$cell]
 ## Sanity checks ##
 ###################
 
+stopifnot(args$args$matrix %in% getAvailableMatrices(ArchRProject))
 stopifnot(args$colour_by %in% colnames(sample_metadata))
 
 if (length(args$batch.variable)>0) {
@@ -99,17 +93,16 @@ sample_metadata.to.archr <- sample_metadata %>%
   as.data.frame() %>% tibble::column_to_rownames("cell")
 
 stopifnot(all(rownames(sample_metadata.to.archr) == rownames(getCellColData(ArchRProject.filt))))
-ArchRProject.filt <- addCellColData(
-  ArchRProject.filt,
-  data = sample_metadata.to.archr[[args$group_by]],
-  name = args$group_by,
-  cells = rownames(sample_metadata.to.archr),
-  force = TRUE
-)
-
-# print cell numbers
-table(getCellColData(ArchRProject.filt,"Sample")[[1]])
-table(getCellColData(ArchRProject.filt,args$group_by)[[1]])
+for (i in args$colour_by) {
+  ArchRProject.filt <- addCellColData(
+    ArchRProject.filt,
+    data = sample_metadata.to.archr[[i]],
+    name = i,
+    cells = rownames(sample_metadata.to.archr),
+    force = TRUE
+  )
+  print(table(getCellColData(ArchRProject.filt,i)[[1]]))
+}
 
 
 #######################
@@ -172,7 +165,7 @@ ArchRProject.filt <- addIterativeLSI(
 
 if (length(args$batch.variable)>0) {
   print(sprintf("Applying %s batch correction for variable: %s", args$batch.method, args$batch.variable))
-  outfile <- sprintf("%s/lsi_features%d_dims%d_%sbatchcorrectionby%s.txt.gz",args$outdir, args$nfeatures, args$ndims, args$batch.method, paste(args$batch.variable,collapse="-"))
+  outfile <- sprintf("%s/lsi_%s_nfeatures%d_dims%d_%sbatchcorrection_by_%s.txt.gz",args$outdir, args$matrix, args$nfeatures, args$ndims, args$batch.method, paste(args$batch.variable,collapse="-"))
   
   # Harmony
   if (args$batch.method=="Harmony") {
@@ -185,29 +178,13 @@ if (length(args$batch.variable)>0) {
     )
     lsi.dt <- getReducedDims(ArchRProject.filt, "IterativeLSI_Harmony") %>% round(3) %>% 
       as.data.table(keep.rownames = T) %>% setnames("rn","cell")
-    
-  # MNN  
-  } else if  (args$batch.method=="MNN") {
-    
-    stop("Not implemented")
-    
-    lsi.corrected <- getReducedDims(ArchRProject.filt, "IterativeLSI") %>% as.data.table %>%
-      split(ArchRProject.filt$sample) %>% map(as.matrix) %>% reducedMNN %>% .[["corrected"]]
-    rownames(lsi.corrected) <- rownames(getReducedDims(ArchRProject.filt, "IterativeLSI") )
-    ArchRProject.filt@reducedDims[["IterativeLSI_MNN"]] <- SimpleList(
-      matDR = lsi.corrected,
-      params = NA,
-      date = Sys.time(),
-      scaleDims = NA,
-      corToDepth = NA
-    )
-    lsi.dt <- getReducedDims(ArchRProject.filt, "IterativeLSI_MNN") %>% round(3) %>% 
-      as.data.table(keep.rownames = T) %>% setnames("rn","cell")
+
   } else {
     stop("Batch correction method not recognised")
   }
+
 } else {
-  outfile <- sprintf("%s/lsi_features%d_ndims%d.txt.gz",args$outdir, args$nfeatures, args$ndims)
+  outfile <- sprintf("%s/lsi_%s_nfeatures%d_ndims%d.txt.gz",args$outdir, args$matrix, args$nfeatures, args$ndims)
   lsi.dt <- getReducedDims(ArchRProject.filt, "IterativeLSI") %>% round(3) %>% 
     as.data.table(keep.rownames = T) %>% setnames("rn","cell")
 }
@@ -252,6 +229,7 @@ for (i in args$n_neighbors) {
     
     # Fetch UMAP coordinates
     umap.dt <- getEmbedding(ArchRProject.filt,"UMAP") %>%
+      round(2) %>%
       as.data.table(keep.rownames = T) %>%
       setnames(c("cell","umap1","umap2"))
     

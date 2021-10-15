@@ -44,6 +44,9 @@ rule all:
             dimred_ndims = config["dimensionality_reduction"]["dimred_ndims"], 
             umap_n_neighbors = config["dimensionality_reduction"]["umap_n_neighbors"], 
             umap_min_dist = config["dimensionality_reduction"]["umap_min_dist"]
+            ),
+        expand(config["directories"]["results"]+"/pseudobulk/{group_by}/completed.txt",
+            group_by=config["pseudobulk_data_matrices"]["group_by"]
             )
 
 ########################
@@ -264,6 +267,7 @@ rule dimensionality_reduction:
         metadata = rules.qc_archr.output.metadata
     output:
         config["directories"]["results"]+"/dimensionality_reduction/umap_{dimred_matrix}_nfeatures{dimred_nfeatures}_ndims{dimred_ndims}_neigh{umap_n_neighbors}_dist{umap_min_dist}.txt.gz"
+        # config["directories"]["results"]+"/dimensionality_reduction/lsi_{dimred_matrix}_nfeatures{dimred_nfeatures}_ndims{dimred_ndims}.txt.gz"
     conda:
         "environment.yaml"
     log: 
@@ -273,17 +277,12 @@ rule dimensionality_reduction:
         outdir = config["directories"]["results"] + "/dimensionality_reduction",
         dimred_colour_by = config["dimensionality_reduction"]["colour_by"],
         memory=config["slurm"]["dimensionality_reduction"]["memory"]
-
+    threads: 
+        config["slurm"]["dimensionality_reduction"]["threads"]
     shell:
         "Rscript {input.script} --matrix {wildcards.dimred_matrix} --metadata {input.metadata} --nfeatures {wildcards.dimred_nfeatures} --ndims {wildcards.dimred_ndims} \
             --n_neighbors {wildcards.umap_n_neighbors} --min_dist {wildcards.umap_min_dist} --colour_by {params.dimred_colour_by} \
-            -seed {params.seed} --outdir {params.outdir} > {log}"
-
-
-##################
-## Differential ##
-##################
-
+            --seed {params.seed} --outdir {params.outdir} > {log}"
 
 ##########################
 ## Add motif annotation ##
@@ -307,4 +306,47 @@ rule add_motif_annotation:
 ##############################
 ## Pseudobulk data matrices ##
 ##############################
+
+rule pseudobulk_data_matrices:
+    input:
+        script = config["scripts"]["pseudobulk_data_matrices"],
+        metadata = rules.qc_archr.output.metadata
+    output:
+        config["directories"]["results"] + "/pseudobulk/{group_by}/completed.txt"
+    params:
+        matrices = config["pseudobulk_data_matrices"]["matrices"],
+        group_by = config["pseudobulk_data_matrices"]["group_by"],
+        memory = config["slurm"]["pseudobulk_data_matrices"]["memory"],
+        outdir = config["directories"]["results"] + "/pseudobulk"
+    threads: 
+        config["slurm"]["pseudobulk_data_matrices"]["threads"]
+    log: 
+        "logs/pseudobulk_data_matrices_by_{group_by}.log"
+    shell:
+        "Rscript {input.script} --metadata {input.metadata}  --group_by {wildcards.group_by} --matrices_to_pseudobulk {params.matrices} --threads {threads} > {log}"
+
+
+##################
+## Differential ##
+##################
+
+##############################
+## Virtual ChIP-seq library ##
+##############################
+
+##################################
+## RNA vs chromVAR scatterplots ##
+##################################
+
+###################################
+## RNA vs promoter accessibility ##
+###################################
+
+##########
+## MOFA ##
+##########
+
+#############################
+## Link enhancers to genes ##
+#############################
 

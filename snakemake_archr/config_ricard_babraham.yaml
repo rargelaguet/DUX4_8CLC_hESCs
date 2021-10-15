@@ -27,7 +27,7 @@ scripts:
     qc_archr: ../atac/archR/processing/3_qc.R
     add_gene_scores: ../atac/archR/gene_scores/add_GeneScore_matrices.R
     pseudobulk_add_group_coverage: ../atac/archR/pseudobulk/1_archR_add_GroupCoverage.R
-    pseudobulk: ../atac/archR/pseudobulk/2_archR_pseudobulk_celltypes.R
+    pseudobulk_data_matrices: ../atac/archR/pseudobulk/2_archR_pseudobulk_celltypes.R
     dimensionality_reduction: ../atac/archR/dimensionality_reduction/automated/archR_dimensionality_reduction.R
     peak_calling: ../atac/archR/peak_calling/peak_calling_archR.R
     gene_scores: ../atac/archR/gene_scores/add_GeneScore_matrices.R

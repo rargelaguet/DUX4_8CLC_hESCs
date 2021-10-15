@@ -23,6 +23,7 @@ args <- p$parse_args(commandArgs(TRUE))
 # args$group_by <- "cluster"
 # args$matrices_to_pseudobulk <- c("PeakMatrix", "GeneScoreMatrix_distal", "GeneScoreMatrix_TSS")
 # args$threads <- 1
+# args$outdir <- ""
 ## END TEST ##
 
 #####################
@@ -52,6 +53,10 @@ addArchRThreads(threads = args$threads)
 # Subset
 ArchRProject.filt <- ArchRProject[sample_metadata$cell]
 
+# Sanity checks
+stopifnot(args$matrices_to_pseudobulk%in%getAvailableMatrices(ArchRProject.filt))
+stopifnot(args$group_by %in% colnames(sample_metadata))
+
 ###########################
 ## Update ArchR metadata ##
 ###########################
@@ -69,8 +74,6 @@ ArchRProject.filt <- addCellColData(
   force = TRUE
 )
 
-# print cell numbers
-table(getCellColData(ArchRProject.filt,"Sample")[[1]])
 table(getCellColData(ArchRProject.filt,args$group_by)[[1]])
 
 ###################################################
@@ -81,11 +84,10 @@ table(getCellColData(ArchRProject.filt,args$group_by)[[1]])
 # 	args$matrices_to_pseudobulk <- getAvailableMatrices(ArchRProject.filt)
 # }
 
-stopifnot(args$matrices_to_pseudobulk%in%getAvailableMatrices(ArchRProject.filt))
-
 se_list <- list()
 for (i in args$matrices_to_pseudobulk) {
-  
+  print(sprintf("Calculating pseudobulk matrix for %s",i))
+
   # summarise
   se_list[[i]] <- getGroupSE(ArchRProject.filt, groupBy = args$group_by, useMatrix = i, divideN = TRUE)
   
@@ -93,3 +95,7 @@ for (i in args$matrices_to_pseudobulk) {
   outfile <- sprintf("%s/pseudobulk_%s_summarized_experiment.rds",args$outdir,i)
   saveRDS(se_list[[i]], outfile)
 }
+
+
+# Create a completion token
+file.create(file.path(args$outdir,"completed.txt"))
