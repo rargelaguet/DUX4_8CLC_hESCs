@@ -37,16 +37,22 @@ rule all:
         # config["directories"]["results"]+"/gene_scores/GeneScoreMatrix_distal.rds",
         # config["directories"]["results"]+"/gene_scores/GeneScoreMatrix_tss.rds"
         # expand(config["directories"]["processed_data"]+"/GroupBigWigs/{group_by}/completed.txt", group_by=config["create_bigwigs"]["group_by"])
-        config["directories"]["processed_data"]+"/Annotations/peakAnnotation.rds",
-        expand("%s/dimensionality_reduction/umap_{dimred_matrix}_nfeatures{dimred_nfeatures}_ndims{dimred_ndims}_neigh{umap_n_neighbors}_dist{umap_min_dist}.txt.gz" % (config["directories"]["results"]), 
-            dimred_matrix = config["dimensionality_reduction"]["dimred_matrix"], 
-            dimred_nfeatures = config["dimensionality_reduction"]["dimred_nfeatures"], 
-            dimred_ndims = config["dimensionality_reduction"]["dimred_ndims"], 
-            umap_n_neighbors = config["dimensionality_reduction"]["umap_n_neighbors"], 
-            umap_min_dist = config["dimensionality_reduction"]["umap_min_dist"]
-            ),
-        expand(config["directories"]["results"]+"/pseudobulk/{group_by}/completed.txt",
-            group_by=config["pseudobulk_data_matrices"]["group_by"]
+        # config["directories"]["processed_data"]+"/Annotations/peakAnnotation.rds",
+        # expand("%s/dimensionality_reduction/umap_{dimred_matrix}_nfeatures{dimred_nfeatures}_ndims{dimred_ndims}_neigh{umap_n_neighbors}_dist{umap_min_dist}.txt.gz" % (config["directories"]["results"]), 
+        #     dimred_matrix = config["dimensionality_reduction"]["dimred_matrix"], 
+        #     dimred_nfeatures = config["dimensionality_reduction"]["dimred_nfeatures"], 
+        #     dimred_ndims = config["dimensionality_reduction"]["dimred_ndims"], 
+        #     umap_n_neighbors = config["dimensionality_reduction"]["umap_n_neighbors"], 
+        #     umap_min_dist = config["dimensionality_reduction"]["umap_min_dist"]
+        #     ),
+        # expand(config["directories"]["results"]+"/pseudobulk/{group_by}/completed.txt",
+        #     group_by = config["pseudobulk_data_matrices"]["group_by"]
+        #     )
+        expand("%s/differential/differential_{differential_matrix}_{group_variable}_{groupA}_vs_{groupB}.txt.gz" % (config["directories"]["results"]), 
+            differential_matrix = config["differential"]["differential_matrix"], 
+            group_variable = config["differential"]["group_variable"], 
+            groupA = config["differential"]["groupA"], 
+            groupB = config["differential"]["groupB"]
             )
 
 ########################
@@ -68,9 +74,7 @@ rule create_arrow_files:
         min_fragments = config["create_arrow_files"]["min_fragments"],
         max_fragments = config["create_arrow_files"]["max_fragments"],
         min_tss_score = config["create_arrow_files"]["min_tss_score"],
-        # threads = config["create_arrow_files"]["threads"],
         memory = config["slurm"]["create_arrow_files"]["memory"]
-        # cores = config["slurm"]["create_arrow_files"]["cores"]
     threads: 
         config["slurm"]["create_arrow_files"]["threads"]
     log: 
@@ -94,7 +98,6 @@ rule create_archr_project:
     params:
         genome = config["create_archr_project"]["genome"],
         outdir = config["directories"]["processed_data"]
-        # cores = config["slurm"]["create_archr_project"]["cores"]
     threads: 
         config["slurm"]["create_archr_project"]["threads"]
     log: 
@@ -115,8 +118,6 @@ rule create_archr_metadata:
         config["directories"]["processed_data"]+"/sample_metadata_after_archR.txt.gz"
     params:
         genome = config["create_archr_metadata"]["genome"],
-        # outfile = config["directories"]["processed_data"]+"/sample_metadata_after_archR.txt.gz"
-        # cores = config["slurm"]["create_archr_metadata"]["cores"],
         memory = config["slurm"]["create_archr_metadata"]["memory"]
     threads: 
         config["slurm"]["create_archr_metadata"]["threads"]
@@ -167,10 +168,6 @@ rule pseudobulk_add_group_coverage:
         metadata = rules.qc_archr.output.metadata
     output:
     	config["directories"]["processed_data"]+"/projectMetadata.rds"
-    	# /bi/group/reik/ricard/data/DUX4_hESCs_multiome/processed/atac/archR/GroupCoverages/eight_cell_like_ricard
-  #   	FALSE._.HNES1_DUX4_overexpression_L001.insertions.coverage.h5
-		# FALSE._.HNES1_wildtype_L001.insertions.coverage.h5
-		# TRUE._.Rep1.insertions.cover
     params:
     	group_by = config["pseudobulk_add_group_coverage"]["group_by"],
         min_cells = config["pseudobulk_add_group_coverage"]["min_cells"],
@@ -236,7 +233,7 @@ rule add_gene_scores:
 ## Create bigwigs ##
 ####################
 
-# DOES NOT WORK WHEN USING MULTIPEL GROUP_BY VALUES
+# DOES NOT WORK WHEN USING MULTIPEL GROUP_BY VALUES: HDF5 FILES CAN'T BE READ SIMULTANEOUSLY?
 
 rule create_bigwigs:
     input:
@@ -317,18 +314,40 @@ rule pseudobulk_data_matrices:
         matrices = config["pseudobulk_data_matrices"]["matrices"],
         group_by = config["pseudobulk_data_matrices"]["group_by"],
         memory = config["slurm"]["pseudobulk_data_matrices"]["memory"],
-        outdir = config["directories"]["results"] + "/pseudobulk"
+        outdir = config["directories"]["results"] + "/pseudobulk/{group_by}"
     threads: 
         config["slurm"]["pseudobulk_data_matrices"]["threads"]
     log: 
         "logs/pseudobulk_data_matrices_by_{group_by}.log"
     shell:
-        "Rscript {input.script} --metadata {input.metadata}  --group_by {wildcards.group_by} --matrices_to_pseudobulk {params.matrices} --threads {threads} > {log}"
+        "Rscript {input.script} --metadata {input.metadata}  --group_by {wildcards.group_by} --matrices_to_pseudobulk {params.matrices} \
+        --outdir {params.outdir} --threads {threads} > {log}"
 
 
 ##################
 ## Differential ##
 ##################
+
+# I DON'T KNOW HOW TO MAKE THIS WORK FOR COMBINATIONS OF GROUP_A AND GROUP_B
+# rule differential: 
+#     input:
+#         script=config["scripts"]["differential"],
+#         metadata = rules.qc_archr.output.metadata
+#     output:
+#         config["directories"]["results"]+"/differential/differential_{differential_matrix}_{group_variable}_{groupA}_vs_{groupB}.txt.gz"
+#     conda:
+#         "environment.yaml"
+#     log: 
+#         "logs/differential_{differential_matrix}_{group_variable}_{groupA}_vs_{groupB}.log"
+#     params:
+#         test = config["differential"]["statistical_test"],
+#         group_variable = config["differential"]["group_variable"],
+#         memory = config["slurm"]["differential"]["memory"]
+#     threads: 
+#         config["slurm"]["differential"]["threads"]
+#     shell:
+#         "Rscript {input.script} --matrix {wildcards.differential_matrix} --metadata {input.metadata} --test {params.test} --groupA {wildcards.groupA} \
+#             --groupB {wildcards.groupB} --group_variable {wildcards.group_variable} --outfile {output} --threads {threads} > {log}"
 
 ##############################
 ## Virtual ChIP-seq library ##

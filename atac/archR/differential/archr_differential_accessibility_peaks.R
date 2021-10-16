@@ -8,21 +8,26 @@ here::i_am("atac/archR/differential/archr_differential_accessibility_peaks.R")
 ################################
 
 p <- ArgumentParser(description='')
+p$add_argument('--matrix',    type="character",    help='Matrix to use, see getAvailableMatrices')
+p$add_argument('--test',      type="character",    help='Statistical test')
 p$add_argument('--groupA',    type="character",    help='group A')
 p$add_argument('--groupB',    type="character",    help='group B')
-p$add_argument('--test',      type="character",    help='Statistical test')
-p$add_argument('--matrix',    type="character",    help='Matrix to use, see getAvailableMatrices')
+p$add_argument('--group_variable',    type="character",    help='group variable')
+p$add_argument('--metadata',    type="character",    help='metadata file')
+p$add_argument('--threads',     type="integer",    default=1,    help='Number of threads')
 p$add_argument('--outfile',   type="character",    help='Output file')
 args <- p$parse_args(commandArgs(TRUE))
 
 ## START TEST
-args <- list()
-args$matrix <- "GeneScoreMatrix_TSS"
-args$test <- "wilcoxon"
-args$groupA <- "FALSE"
-args$groupB <- "TRUE"
-args$outfile <- file.path(io$basedir,"results/atac/archR/differential/PeakMatrix/eight_cell_like_ricard_differential_GeneScoreMatrix_TSS.tsv.gz")
-args$group.by <- "eight_cell_like_ricard"
+# args <- list()
+# args$metadata <- "/bi/group/reik/ricard/data/DUX4_hESCs_multiome/results/atac/archR/qc/sample_metadata_after_qc.txt.gz"
+# args$matrix <- "GeneScoreMatrix_TSS"
+# args$test <- "wilcoxon"
+# args$group_variable <- "cluster"
+# args$groupA <- "cluster_1"
+# args$groupB <- "cluster_2"
+# args$outfile <- "/bi/group/reik/ricard/data/DUX4_hESCs_multiome/results/atac/archR/differential/differential_GeneScoreMatrix_TSS_cluster1_vs_cluster2.txt.gz"
+# args$threads <- 1
 ## END TEST
 
 # Sanity checks
@@ -39,19 +44,25 @@ source(here::here("utils.R"))
 ## Load cell metadata ##
 ########################
 
-sample_metadata <- fread(io$metadata) %>%
-  .[pass_atacQC==TRUE] %>%
-  .[sample%in%opts$samples & eight_cell_like_ricard%in%c(args$groupA,args$groupB)]
-table(sample_metadata[[args$group.by]])
+sample_metadata <- fread(args$metadata) %>%
+  .[pass_atacQC==TRUE & sample%in%opts$samples]
+
+stopifnot(args$group_variable%in%colnames(sample_metadata))
+sample_metadata <- sample_metadata %>% .[get(args$group_variable)%in%c(args$groupA,args$groupB)]
+stopifnot(args$groupA %in% unique(sample_metadata[[args$group_variable]]))
+stopifnot(args$groupB %in% unique(sample_metadata[[args$group_variable]]))
 
 ########################
 ## Load ArchR project ##
 ########################
 
-source(here::here("atac/archR/load_archR_project.R"))
+source(here::here("atac/archR/load_archR_project.R")) 
 
 # Subset ArchR object
 ArchRProject.filt <- ArchRProject[sample_metadata$cell]
+
+# Sanity checks
+stopifnot(args$matrix %in% getAvailableMatrices(ArchRProject))
 
 ###########################
 ## Update ArchR metadata ##
@@ -61,21 +72,16 @@ foo <- sample_metadata %>%
   .[cell%in%rownames(ArchRProject.filt)] %>% setkey(cell) %>% .[rownames(ArchRProject.filt)] %>%
   as.data.frame() %>% tibble::column_to_rownames("cell")
 stopifnot(all(rownames(foo) == rownames(getCellColData(ArchRProject.filt))))
+
 ArchRProject.filt <- addCellColData(
   ArchRProject.filt,
-  data = foo[[args$group.by]], 
-  name = args$group.by,
+  data = foo[[args$group_variable]], 
+  name = args$group_variable,
   cells = rownames(foo),
   force = TRUE
 )
 
-###################
-## Sanity checks ##
-###################
-
-stopifnot(args$matrix%in%getAvailableMatrices(ArchRProject.filt))
-stopifnot(c(args$groupA,args$groupB)%in%getCellColData(ArchRProject.filt)[[args$group.by]])
-stopifnot(sample_metadata$cell %in% rownames(ArchRProject.filt))
+stopifnot(c(args$groupA,args$groupB)%in%getCellColData(ArchRProject.filt)[[args$group_variable]])
 
 #######################
 ## Differential test ##
@@ -84,7 +90,7 @@ stopifnot(sample_metadata$cell %in% rownames(ArchRProject.filt))
 markerTest <- getMarkerFeatures(
   ArchRProject.filt, 
   useMatrix = args$matrix,
-  groupBy = args$group.by,
+  groupBy = args$group_variable,
   testMethod = args$test,
   bias = c("TSSEnrichment", "log10(nFrags)"),
   useGroups = args$groupA,
@@ -98,7 +104,7 @@ markerTest <- getMarkerFeatures(
 dt.1 <- rowData(markerTest) %>% as.data.table %>%
   setnames("seqnames","chr") %>%
   .[,idx:=sprintf("%s:%s-%s",chr,start,end)] %>%
-  .[,c("chr","start","end"):=NULL]
+  .[,c("chr","start","end","strand"):=NULL]
 
 dt.2 <- data.table(
   # Log2FC = round(assay(markerTest,"Log2FC")[,1],3),

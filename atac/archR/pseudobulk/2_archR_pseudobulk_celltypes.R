@@ -3,7 +3,7 @@
 suppressPackageStartupMessages(library(ArchR))
 suppressPackageStartupMessages(library(argparse))
 
-here::i_am("atac/archR/processing/2_archR_pseudobulk_celltypes.R")
+here::i_am("atac/archR/pseudobulk/2_archR_pseudobulk_celltypes.R")
 
 ######################
 ## Define arguments ##

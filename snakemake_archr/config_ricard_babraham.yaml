@@ -28,12 +28,13 @@ scripts:
     add_gene_scores: ../atac/archR/gene_scores/add_GeneScore_matrices.R
     pseudobulk_add_group_coverage: ../atac/archR/pseudobulk/1_archR_add_GroupCoverage.R
     pseudobulk_data_matrices: ../atac/archR/pseudobulk/2_archR_pseudobulk_celltypes.R
-    dimensionality_reduction: ../atac/archR/dimensionality_reduction/automated/archR_dimensionality_reduction.R
+    dimensionality_reduction: ../atac/archR/dimensionality_reduction/archR_dimensionality_reduction.R
     peak_calling: ../atac/archR/peak_calling/peak_calling_archR.R
     gene_scores: ../atac/archR/gene_scores/add_GeneScore_matrices.R
     create_bigwigs: ../atac/archR/bigwig/archR_export_bw.R
     add_motif_annotation: ../atac/archR/add_motif_annotation/archR_add_motif_annotation.R
     dimensionality_reduction: ../atac/archR/dimensionality_reduction/archR_dimensionality_reduction.R
+    differential: ../atac/archR/differential/archr_differential_accessibility_peaks.R
 
 
 
@@ -90,6 +91,17 @@ dimensionality_reduction:
     umap_min_dist: 0.3
     colour_by: ["sample", "cluster"]
 
+pseudobulk_data_matrices:
+    group_by: "cluster"
+    matrices: ["PeakMatrix", "GeneScoreMatrix_TSS"]
+
+differential:
+    differential_matrix: "PeakMatrix"
+    group_variable: "cluster"
+    groupA: "cluster_1"
+    groupB: "cluster_2"
+    statistical_test: "ttest"
+
 ###########
 ## Slurm ##
 ###########
@@ -123,5 +135,11 @@ slurm:  # memory in GB
         threads: 1
         memory: 10
     dimensionality_reduction:
+        threads: 1
+        memory: 10
+    pseudobulk_data_matrices:
+        threads: 1
+        memory: 10
+    differential:
         threads: 1
         memory: 10
